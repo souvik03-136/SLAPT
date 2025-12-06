@@ -1,4 +1,4 @@
-# NCAP: Tech Stack & Development Roadmap
+# SLAPT: Tech Stack & Development Roadmap
 
 ## Tech Stack
 
@@ -151,7 +151,7 @@
 **Week 13-15: User Experience**
 - Better visual timeline (waveforms)
 - Preset library (genre templates)
-- NCAP modifiers ("make it groovy")
+- SLAPT modifiers ("make it groovy")
 - Live mode (real-time editing)
 - Keyboard shortcuts
 

@@ -1,9 +1,9 @@
-# NCAP: A Human-First Music Programming Language
+# SLAPT: A Human-First Music Programming Language
 
 ## Core Vision
 **Tagline:** "Write Music Like You Feel It"
 
-NCAP is a music programming language that lets you create beats and music using natural, descriptive language instead of cryptic code. It's designed to make music production accessible to everyone—from complete beginners to experienced producers—by speaking the language of musicians, not programmers.
+SLAPT is a music programming language that lets you create beats and music using natural, descriptive language instead of cryptic code. It's designed to make music production accessible to everyone—from complete beginners to experienced producers—by speaking the language of musicians, not programmers.
 
 ---
 
@@ -22,9 +22,9 @@ sound("hh*8").gain(0.6).delay(0.5)
 - Error messages are technical and unhelpful
 - No guidance for musical context
 
-### The NCAP Approach
+### The SLAPT Approach
 ```
-// NCAP syntax:
+// SLAPT syntax:
 play kick every beat
 play snare on beats 2 and 4
 play hihat 8 times per bar with swing
@@ -86,13 +86,13 @@ drums evolving every 4 bars:
 ## Key Features
 
 ### 1. Semantic Error Messages
-Instead of cryptic errors, NCAP teaches you:
+Instead of cryptic errors, SLAPT teaches you:
 
 ```
 // User writes:
 play kick every 3 beats
 
-// NCAP responds:
+// SLAPT responds:
 ⚠️ Timing feels off! 
    → "every 3 beats" creates uneven bars (4 beats per bar)
    💡 Did you mean: 
@@ -129,7 +129,7 @@ tempo 250 bpm
       • Change genre to @genre dnb or @genre techno
 ```
 
-### 2. NCAP Modifiers
+### 2. SLAPT Modifiers
 Emotional and aesthetic descriptors that apply real musical transformations:
 
 ```
@@ -201,7 +201,7 @@ Each genre includes:
 @genre lofi-hiphop
 
 melody using piano:
-  // NCAP automatically applies:
+  // SLAPT automatically applies:
   // ✓ Rhodes/warm electric piano sound
   // ✓ Slight detuning (-5 cents)
   // ✓ Medium reverb (1.2s decay)
@@ -244,7 +244,7 @@ drums:
 ```
 // ============================================
 // "Midnight Study Session" 
-// A Complete NCAP Program
+// A Complete SLAPT Program
 // ============================================
 
 @genre lofi-hiphop
@@ -451,7 +451,7 @@ Once you master lo-fi, the same concepts expand to:
 
 ## Error Handling Philosophy
 
-NCAP treats errors as **teaching opportunities**, not failures.
+SLAPT treats errors as **teaching opportunities**, not failures.
 
 ### Example 1: Beat Out of Range
 ```
