@@ -1,0 +1,35 @@
+services:
+  nginx:
+    build:
+      context: ./nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - web
+      - parser
+    networks:
+      - slapt-net
+
+  web:
+    build:
+      context: ./services/web
+    environment:
+      - PARSER_URL=http://parser:3001
+      - NODE_ENV=production
+    networks:
+      - slapt-net
+    depends_on:
+      - parser
+
+  parser:
+    build:
+      context: ./services/parser
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+    networks:
+      - slapt-net
+
+networks:
+  slapt-net:
+    driver: bridge

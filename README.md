@@ -147,40 +147,31 @@ One line. Entire vibe shift. That's the SLAPT difference.
 
 ## 🚀 Quick Start (Literally 2 Minutes)
 
-### Install
+### Run with Docker
+
 ```bash
-npm install -g slapt
-# or
-brew install slapt
+git clone https://github.com/souvik03-136/slapt
+cd slapt
+docker-compose up --build
 ```
 
-### Your First Beat
+Open `http://localhost`. That's it.
+
+### Run in dev mode (no Docker)
+
 ```bash
-slapt new my-first-beat
-cd my-first-beat
-slapt play
+# Terminal 1 — parser service
+cd services/parser
+npm install
+npm run dev
+
+# Terminal 2 — web frontend
+cd services/web
+npm install
+npm run dev
 ```
 
-### Write This:
-```
-@genre lofi-hiphop
-@tempo 75 bpm
-
-drums:
-  kick on 1 and 3
-  snare on 2 and 4
-  hihat 8 times
-
-chords:
-  progression Am7 → Fmaj7 → Dm7 → E7
-  rhythm whole notes
-
-make it dusty
-```
-
-Hit save. It plays automatically. You just made a lofi beat in 30 seconds.
-
-**No tutorial. No setup. No existential crisis.**
+Web on `http://localhost:3000`, parser on `http://localhost:3001`.
 
 ---
 
@@ -328,7 +319,7 @@ No cap. 🚫🧢
 
 ### Is your code slapping yet?
 
-[Get Started](./docs/getting-started.md) • [Examples](./examples) •
+[Get Started](./docs/DOCUMENTATION.md) • [Tutorials](./docs/TUTORIALS.md)
 
 **⭐ Star us on GitHub if SLAPT helped you make something fire**
 
@@ -338,12 +329,14 @@ No cap. 🚫🧢
 
 ## Quick Links
 
-- 📖 [Full Documentation](./docs)
-- 🎓 [Tutorials](./docs/tutorials)
-- 🎵 [Example Tracks](./examples)
+- 📖 [Documentation](./docs/DOCUMENTATION.md) — architecture, language reference, API
+- 🎓 [Tutorials](./docs/TUTORIALS.md) — 10 step-by-step guides from first beat to full arrangement
+- ⚙️ [Task Commands](./TASKS.md) — all `task` commands for Docker, dev, tests, build, and cleanup
+- 🧪 [Tests](./tests) — lexer, error validation, and API integration tests
+- 🤝 [Contributing](./CONTRIBUTING.md) — how to report bugs, add genres, submit PRs
+- 🔒 [Security](./SECURITY.md) — how to report vulnerabilities
 - 🐛 [Report Issues](https://github.com/souvik03-136/slapt/issues)
 - 💡 [Feature Requests](https://github.com/souvik03-136/slapt/discussions)
-- 🎤 [Showcase](./SHOWCASE.md)
 
 ---
 

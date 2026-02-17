@@ -1,0 +1,226 @@
+version: '3'
+
+vars:
+  PARSER_DIR: services/parser
+  WEB_DIR: services/web
+  TESTS_DIR: tests
+
+tasks:
+
+  default:
+    desc: List all available tasks
+    cmds:
+      - task --list
+    silent: true
+
+  # ── Docker ────────────────────────────────────────────────────────────────
+
+  run:
+    desc: Build and start all services (Docker)
+    cmds:
+      - docker compose up --build
+
+  run:detached:
+    desc: Build and start all services in background
+    aliases: [run:d]
+    cmds:
+      - docker compose up --build -d
+      - echo "Services running at http://localhost"
+
+  stop:
+    desc: Stop all running services
+    cmds:
+      - docker compose down
+
+  stop:clean:
+    desc: Stop all services and remove volumes + images
+    aliases: [nuke]
+    cmds:
+      - docker compose down --volumes --rmi local
+      - echo "All containers, volumes, and local images removed"
+
+  restart:
+    desc: Restart all services
+    deps: [stop]
+    cmds:
+      - task: run
+
+  log:
+    desc: "Tail logs from all services (usage: task log or task log -- parser)"
+    cmds:
+      - docker compose logs -f {{.CLI_ARGS}}
+
+  logs:parser:
+    desc: Tail parser service logs
+    cmds:
+      - docker compose logs -f parser
+
+  logs:web:
+    desc: Tail web service logs
+    cmds:
+      - docker compose logs -f web
+
+  ps:
+    desc: Show running service containers
+    cmds:
+      - docker compose ps
+
+  # ── Dev (no Docker) ────────────────────────────────────────────────────────
+
+  dev:parser:
+    desc: Run parser in dev mode (hot reload)
+    dir: '{{.PARSER_DIR}}'
+    cmds:
+      - npm run dev
+
+  dev:web:
+    desc: Run web frontend in dev mode (hot reload)
+    dir: '{{.WEB_DIR}}'
+    cmds:
+      - npm run dev
+
+  # ── Install ────────────────────────────────────────────────────────────────
+
+  install:
+    desc: Install dependencies for all services and tests
+    deps:
+      - install:parser
+      - install:web
+      - install:tests
+
+  install:parser:
+    desc: Install parser dependencies
+    dir: '{{.PARSER_DIR}}'
+    cmds:
+      - npm install
+
+  install:web:
+    desc: Install web dependencies
+    dir: '{{.WEB_DIR}}'
+    cmds:
+      - npm install
+
+  install:tests:
+    desc: Install test dependencies
+    dir: '{{.TESTS_DIR}}'
+    cmds:
+      - npm install
+
+  # ── Build ──────────────────────────────────────────────────────────────────
+
+  build:
+    desc: Build both services for production
+    deps:
+      - build:parser
+      - build:web
+
+  build:parser:
+    desc: Compile parser TypeScript to dist/
+    dir: '{{.PARSER_DIR}}'
+    cmds:
+      - npm run build
+
+  build:web:
+    desc: Build web frontend for production
+    dir: '{{.WEB_DIR}}'
+    cmds:
+      - npm run build
+
+  # ── Tests ──────────────────────────────────────────────────────────────────
+
+  test:
+    desc: Run all tests (parser must be running — use task test:full for auto-start)
+    dir: '{{.TESTS_DIR}}'
+    cmds:
+      - npm test
+
+  test:unit:
+    desc: Run unit tests only (lexer + error validation, no server needed)
+    dir: '{{.TESTS_DIR}}'
+    cmds:
+      - node --test --require ts-node/register parser/lexer.test.ts parser/errors.test.ts
+
+  test:lexer:
+    desc: Run lexer tests only
+    dir: '{{.TESTS_DIR}}'
+    cmds:
+      - npm run test:lexer
+
+  test:errors:
+    desc: Run error validation tests only
+    dir: '{{.TESTS_DIR}}'
+    cmds:
+      - npm run test:errors
+
+  test:api:
+    desc: Run API integration tests (parser must be running)
+    dir: '{{.TESTS_DIR}}'
+    cmds:
+      - npm run test:api
+
+  test:full:
+    desc: Start parser in Docker then run all tests, then stop
+    cmds:
+      - docker compose up -d parser
+      - defer: docker compose stop parser
+      - sleep 3
+      - task: test
+
+  # ── Type checking ──────────────────────────────────────────────────────────
+
+  check:
+    desc: Type-check both services
+    deps:
+      - check:parser
+      - check:web
+
+  check:parser:
+    desc: Type-check parser service
+    dir: '{{.PARSER_DIR}}'
+    cmds:
+      - npx tsc --noEmit
+
+  check:web:
+    desc: Type-check web service
+    dir: '{{.WEB_DIR}}'
+    cmds:
+      - npm run check
+
+  # ── Health ─────────────────────────────────────────────────────────────────
+
+  health:
+    desc: Check parser health endpoint
+    preconditions:
+      - sh: docker compose ps parser | grep -q running
+        msg: "Parser is not running. Start it with: task run:d"
+    cmds:
+      - curl -s http://localhost/api/parse -X POST -H "Content-Type:application/json" -d '{"code":"@genre lofi-hiphop"}' | cat
+
+  health:parser:
+    desc: Hit the parser /health endpoint directly
+    cmds:
+      - curl -s http://localhost/api/parse/../health | cat
+
+  # ── Cleanup ────────────────────────────────────────────────────────────────
+
+  clean:
+    desc: Remove all build artifacts (dist/, build/, node_modules/)
+    cmds:
+      - rm -rf {{.PARSER_DIR}}/dist
+      - rm -rf {{.WEB_DIR}}/build
+      - rm -rf {{.WEB_DIR}}/.svelte-kit
+      - echo "Build artifacts removed"
+
+  clean:deps:
+    desc: Remove all node_modules across all services and tests
+    cmds:
+      - rm -rf {{.PARSER_DIR}}/node_modules
+      - rm -rf {{.WEB_DIR}}/node_modules
+      - rm -rf {{.TESTS_DIR}}/node_modules
+      - echo "All node_modules removed"
+
+  clean:all:
+    desc: Remove everything — artifacts, deps, Docker volumes
+    deps: [clean, clean:deps]
+    cmds:
+      - task: stop:clean

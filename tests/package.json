@@ -1,0 +1,19 @@
+{
+  "name": "slapt-tests",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test --require ts-node/register parser/lexer.test.ts parser/errors.test.ts parser/api.test.ts",
+    "test:lexer": "node --test --require ts-node/register parser/lexer.test.ts",
+    "test:errors": "node --test --require ts-node/register parser/errors.test.ts",
+    "test:api": "node --test --require ts-node/register parser/api.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "chevrotain": "^11.0.3"
+  }
+}

@@ -15,7 +15,7 @@ Found a security issue? Please **DO NOT** open a public issue.
 
 ### Instead:
 
-1. **Email me directly:** [your-email@example.com]
+1. **Email me directly:** [souvikmahanta2003@gmail.com]
 2. Include:
    - Description of the vulnerability
    - Steps to reproduce
