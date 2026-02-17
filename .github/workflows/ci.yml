@@ -1,0 +1,203 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck-parser:
+    name: Typecheck — Parser
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/parser
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: services/parser/package-lock.json
+
+      - run: npm ci
+      - run: npx tsc --noEmit
+
+  typecheck-web:
+    name: Typecheck — Web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: services/web/package-lock.json
+
+      - run: npm ci
+      - run: npx svelte-kit sync
+      - run: npm run check
+
+  test-unit:
+    name: Tests — Unit (lexer + errors)
+    runs-on: ubuntu-latest
+    needs: [typecheck-parser]
+    defaults:
+      run:
+        working-directory: tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+
+      - name: Install test deps
+        run: npm ci
+
+      - name: Install parser deps
+        working-directory: services/parser
+        run: npm ci
+
+      - name: Run lexer tests
+        run: npm run test:lexer
+
+      - name: Run error validation tests
+        run: npm run test:errors
+
+  test-integration:
+    name: Tests — Integration (API)
+    runs-on: ubuntu-latest
+    needs: [test-unit]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+
+      - name: Build parser image
+        run: docker build -t slapt-parser ./services/parser
+
+      - name: Start parser container
+        run: |
+          docker run -d \
+            --name slapt-parser-test \
+            -p 3001:3001 \
+            -e NODE_ENV=test \
+            slapt-parser
+
+      - name: Wait for parser to be healthy
+        run: |
+          for i in $(seq 1 20); do
+            if curl -sf http://localhost:3001/health; then
+              echo "Parser is healthy"
+              exit 0
+            fi
+            echo "Waiting... ($i/20)"
+            sleep 2
+          done
+          echo "Parser failed to start"
+          docker logs slapt-parser-test
+          exit 1
+
+      - name: Install test deps
+        working-directory: tests
+        run: npm ci
+
+      - name: Install parser deps
+        working-directory: services/parser
+        run: npm ci
+
+      - name: Run API integration tests
+        working-directory: tests
+        env:
+          TEST_PARSER_PORT: 3001
+        run: npm run test:api
+
+      - name: Dump parser logs on failure
+        if: failure()
+        run: docker logs slapt-parser-test
+
+      - name: Stop parser container
+        if: always()
+        run: docker rm -f slapt-parser-test
+
+  docker-build:
+    name: Docker Build — ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: [typecheck-parser, typecheck-web]
+    strategy:
+      matrix:
+        service: [parser, web, nginx]
+        include:
+          - service: parser
+            context: ./services/parser
+          - service: web
+            context: ./services/web
+          - service: nginx
+            context: ./nginx
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build ${{ matrix.service }} image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  docker-compose-up:
+    name: Docker Compose — Full Stack Smoke Test
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start all services
+        run: docker compose up -d --build
+
+      - name: Wait for stack to be healthy
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost/api/parse \
+              -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"code":"@genre lofi-hiphop"}' | grep -q "success"; then
+              echo "Stack is healthy"
+              exit 0
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 3
+          done
+          echo "Stack failed to become healthy"
+          docker compose logs
+          exit 1
+
+      - name: Verify web is serving
+        run: curl -sf http://localhost | grep -q "SLAPT" || (echo "Web not serving" && exit 1)
+
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down

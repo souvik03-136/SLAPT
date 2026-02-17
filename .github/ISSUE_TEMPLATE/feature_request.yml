@@ -1,0 +1,53 @@
+name: Feature Request
+description: Suggest something new
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Got an idea? We want to hear it.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: What are you trying to do that SLAPT doesn't support yet?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: What would the SLAPT syntax look like?
+      description: Show us what you'd write
+      render: text
+      placeholder: |
+        drums:
+          kick on 1 and 3
+          // your new feature here
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area?
+      options:
+        - Language / Syntax
+        - New genre template
+        - Audio engine / effects
+        - Editor / UI
+        - Export (WAV, MIDI)
+        - Performance
+        - Docs / Tutorials
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Which roadmap phase does this fit?
+      options:
+        - Phase 1 (Lo-fi & Hip-Hop) — current
+        - Phase 2 (Electronic Expansion)
+        - Phase 3 (Everything Else)
+        - Not on the roadmap yet

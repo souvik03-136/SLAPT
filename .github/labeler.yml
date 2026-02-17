@@ -1,0 +1,31 @@
+parser:
+  - changed-files:
+      - any-glob-to-any-file: 'services/parser/**'
+
+web:
+  - changed-files:
+      - any-glob-to-any-file: 'services/web/**'
+
+audio:
+  - changed-files:
+      - any-glob-to-any-file: 'services/web/src/lib/audio/**'
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file: 'tests/**'
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file: ['docs/**', '*.md', '.github/**/*.md']
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file: '.github/workflows/**'
+
+docker:
+  - changed-files:
+      - any-glob-to-any-file: ['**/Dockerfile', 'docker-compose.yml', 'nginx/**']
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file: ['**/package.json', '**/package-lock.json']

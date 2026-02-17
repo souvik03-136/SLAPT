@@ -1,0 +1,55 @@
+name: Bug Report
+description: Something broke
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. The more detail you give, the faster it gets fixed.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: slapt-code
+    attributes:
+      label: Your SLAPT code
+      description: The code that triggered the bug
+      render: text
+
+  - type: textarea
+    id: error-output
+    attributes:
+      label: Error output
+      description: Paste the full error message or console output
+      render: shell
+
+  - type: dropdown
+    id: service
+    attributes:
+      label: Which service?
+      options:
+        - Parser (error messages, token issues)
+        - Web / Editor (UI, CodeMirror)
+        - Audio Engine (Tone.js, playback)
+        - Docker / Build
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: Windows 11, macOS 14, Ubuntu 24.04
+
+  - type: input
+    id: docker-version
+    attributes:
+      label: Docker version
+      placeholder: docker --version

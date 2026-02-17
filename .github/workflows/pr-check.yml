@@ -1,0 +1,92 @@
+name: PR Check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  title-lint:
+    name: PR Title — Conventional Commits
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR title format
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern="^(add|fix|docs|refactor|test|chore|perf|ci)(\(.+\))?: .{1,72}$"
+          if echo "$PR_TITLE" | grep -qE "$pattern"; then
+            echo "PR title is valid: $PR_TITLE"
+          else
+            echo "Invalid PR title: $PR_TITLE"
+            echo ""
+            echo "Must follow: <type>(<scope>): <description>"
+            echo ""
+            echo "Valid types: add | fix | docs | refactor | test | chore | perf | ci"
+            echo ""
+            echo "Examples:"
+            echo "  add(parser): support new chord voicings"
+            echo "  fix(lexer): resolve token ordering conflict"
+            echo "  docs: update tutorial 4 chord examples"
+            echo "  test(api): add integration tests for beat validation"
+            exit 1
+          fi
+
+  branch-name:
+    name: Branch Name — Convention Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch name
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          pattern="^(feature|fix|docs|refactor|test|chore|hotfix)/.+"
+          if echo "$BRANCH" | grep -qE "$pattern"; then
+            echo "Branch name is valid: $BRANCH"
+          else
+            echo "Invalid branch name: $BRANCH"
+            echo ""
+            echo "Must follow: <type>/<description-in-kebab-case>"
+            echo ""
+            echo "Examples:"
+            echo "  feature/add-trap-genre"
+            echo "  fix/lexer-token-ordering"
+            echo "  docs/update-tutorials"
+            echo "  hotfix/parser-crash-on-empty-input"
+            exit 1
+          fi
+
+  size-check:
+    name: PR Size — Sanity Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Count changed lines
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          LINES=$(git diff --stat $BASE $HEAD | tail -1 | grep -oE '[0-9]+ insertion' | grep -oE '[0-9]+' || echo 0)
+          echo "Lines added: $LINES"
+          if [ "$LINES" -gt 1500 ]; then
+            echo ""
+            echo "This PR adds $LINES lines. Consider breaking it into smaller PRs."
+            echo "Large PRs are harder to review and more likely to introduce bugs."
+          else
+            echo "PR size looks good."
+          fi
+
+  label:
+    name: Auto Label
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/labeler@v5
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/labeler.yml

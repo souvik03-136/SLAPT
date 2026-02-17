@@ -1,0 +1,87 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git tag --sort=-version:refname | sed -n '2p')
+          CURR_TAG=${GITHUB_REF#refs/tags/}
+
+          if [ -z "$PREV_TAG" ]; then
+            RANGE="HEAD"
+          else
+            RANGE="$PREV_TAG..HEAD"
+          fi
+
+          echo "## What's Changed" > changelog.md
+          echo "" >> changelog.md
+
+          ADDS=$(git log $RANGE --pretty=format:"- %s (%h)" --grep="^add" 2>/dev/null)
+          FIXES=$(git log $RANGE --pretty=format:"- %s (%h)" --grep="^fix" 2>/dev/null)
+          DOCS=$(git log $RANGE --pretty=format:"- %s (%h)" --grep="^docs" 2>/dev/null)
+          REFACTORS=$(git log $RANGE --pretty=format:"- %s (%h)" --grep="^refactor" 2>/dev/null)
+          TESTS=$(git log $RANGE --pretty=format:"- %s (%h)" --grep="^test" 2>/dev/null)
+          PERF=$(git log $RANGE --pretty=format:"- %s (%h)" --grep="^perf" 2>/dev/null)
+
+          if [ -n "$ADDS" ]; then
+            echo "### ✨ New Features" >> changelog.md
+            echo "$ADDS" >> changelog.md
+            echo "" >> changelog.md
+          fi
+
+          if [ -n "$FIXES" ]; then
+            echo "### 🐛 Bug Fixes" >> changelog.md
+            echo "$FIXES" >> changelog.md
+            echo "" >> changelog.md
+          fi
+
+          if [ -n "$PERF" ]; then
+            echo "### ⚡ Performance" >> changelog.md
+            echo "$PERF" >> changelog.md
+            echo "" >> changelog.md
+          fi
+
+          if [ -n "$REFACTORS" ]; then
+            echo "### ♻️ Refactors" >> changelog.md
+            echo "$REFACTORS" >> changelog.md
+            echo "" >> changelog.md
+          fi
+
+          if [ -n "$DOCS" ]; then
+            echo "### 📝 Documentation" >> changelog.md
+            echo "$DOCS" >> changelog.md
+            echo "" >> changelog.md
+          fi
+
+          if [ -n "$TESTS" ]; then
+            echo "### 🧪 Tests" >> changelog.md
+            echo "$TESTS" >> changelog.md
+            echo "" >> changelog.md
+          fi
+
+          echo "" >> changelog.md
+          echo "**Full diff:** https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${CURR_TAG}" >> changelog.md
+
+          cat changelog.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: changelog.md
+          draft: false
+          prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') || contains(github.ref, '-rc') }}
