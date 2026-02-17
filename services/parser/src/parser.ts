@@ -1,6 +1,5 @@
 import {
   CstParser,
-  IToken,
 } from "chevrotain";
 import * as T from "./lexer";
 
@@ -61,19 +60,13 @@ class SlaptParser extends CstParser {
   });
 
   drumModifier = this.RULE("drumModifier", () => {
-    this.OR([
-      {
-        ALT: () => {
-          this.CONSUME(T.Swing);
-          this.OPTION(() => {
-            this.CONSUME(T.LParen);
-            this.CONSUME(T.NumberLiteral);
-            this.CONSUME(T.Percent);
-            this.CONSUME(T.RParen);
-          });
-        },
-      },
-    ]);
+    this.CONSUME(T.Swing);
+    this.OPTION(() => {
+      this.CONSUME(T.LParen);
+      this.CONSUME(T.NumberLiteral);
+      this.CONSUME(T.Percent);
+      this.CONSUME(T.RParen);
+    });
   });
 
   drumStatement = this.RULE("drumStatement", () => {
@@ -235,23 +228,55 @@ class SlaptParser extends CstParser {
           });
         },
       },
-      { ALT: () => this.SUBRULE(this.effectStatement) },
+      { ALT: () => this.SUBRULE(this.reverbEffect) },
+      { ALT: () => this.SUBRULE(this.delayEffect) },
+      { ALT: () => this.SUBRULE(this.tremoloEffect) },
     ]);
+  });
+
+  reverbEffect = this.RULE("reverbEffect", () => {
+    this.CONSUME(T.Reverb);
+    this.CONSUME(T.LParen);
+    this.CONSUME(T.Identifier);
+    this.OPTION(() => {
+      this.CONSUME(T.Comma);
+      this.CONSUME2(T.Identifier);
+    });
+    this.CONSUME(T.RParen);
+  });
+
+  delayEffect = this.RULE("delayEffect", () => {
+    this.CONSUME(T.Delay);
+    this.CONSUME(T.LParen);
+    this.CONSUME(T.Identifier);
+    this.CONSUME(T.Comma);
+    this.CONSUME2(T.Identifier);
+    this.CONSUME2(T.Comma);
+    this.CONSUME(T.NumberLiteral);
+    this.CONSUME(T.Percent);
+    this.CONSUME3(T.Identifier);
+    this.CONSUME(T.RParen);
+  });
+
+  tremoloEffect = this.RULE("tremoloEffect", () => {
+    this.CONSUME(T.Tremolo);
+    this.CONSUME(T.LParen);
+    this.CONSUME(T.Identifier);
+    this.CONSUME(T.Comma);
+    this.CONSUME(T.NumberLiteral);
+    this.CONSUME2(T.Identifier);
+    this.CONSUME(T.RParen);
   });
 
   bassBlock = this.RULE("bassBlock", () => {
     this.CONSUME(T.Bass);
     this.OPTION(() => {
       this.CONSUME(T.Walking);
-      this.CONSUME(T.The);
+      this.CONSUME(T.Identifier);
       this.CONSUME(T.Roots);
     });
     this.CONSUME(T.Colon);
     this.MANY(() => this.SUBRULE(this.bassStatement));
-  });
-
-  The = this.RULE("The", () => {
-    this.CONSUME(T.Identifier);
   });
 
   bassStatement = this.RULE("bassStatement", () => {
@@ -299,7 +324,8 @@ class SlaptParser extends CstParser {
       {
         ALT: () => {
           this.CONSUME(T.Rain);
-          this.CONSUME2(T.Identifier);
+          this.CONSUME(T.Identifier);
+          this.CONSUME(T.Softly);
           this.CONSUME(T.In);
           this.CONSUME(T.Background);
         },
@@ -308,7 +334,7 @@ class SlaptParser extends CstParser {
         ALT: () => {
           this.CONSUME(T.Tape);
           this.CONSUME(T.Wobble);
-          this.CONSUME3(T.Identifier);
+          this.CONSUME2(T.Identifier);
         },
       },
     ]);
@@ -365,53 +391,13 @@ class SlaptParser extends CstParser {
 
   melodyStatement = this.RULE("melodyStatement", () => {
     this.OR([
+      { ALT: () => this.SUBRULE(this.reverbEffect) },
+      { ALT: () => this.SUBRULE(this.delayEffect) },
+      { ALT: () => this.SUBRULE(this.tremoloEffect) },
       {
         ALT: () => {
           this.CONSUME(T.Identifier);
           this.OPTION(() => this.CONSUME2(T.Identifier));
-        },
-      },
-      { ALT: () => this.SUBRULE(this.effectStatement) },
-    ]);
-  });
-
-  effectStatement = this.RULE("effectStatement", () => {
-    this.OR([
-      {
-        ALT: () => {
-          this.CONSUME(T.Reverb);
-          this.CONSUME(T.LParen);
-          this.CONSUME(T.Identifier);
-          this.OPTION(() => {
-            this.CONSUME(T.Comma);
-            this.CONSUME2(T.Identifier);
-          });
-          this.CONSUME(T.RParen);
-        },
-      },
-      {
-        ALT: () => {
-          this.CONSUME(T.Delay);
-          this.CONSUME2(T.LParen);
-          this.CONSUME3(T.Identifier);
-          this.CONSUME(T.Comma);
-          this.CONSUME4(T.Identifier);
-          this.CONSUME5(T.Comma);
-          this.CONSUME(T.NumberLiteral);
-          this.CONSUME(T.Percent);
-          this.CONSUME6(T.Identifier);
-          this.CONSUME7(T.RParen);
-        },
-      },
-      {
-        ALT: () => {
-          this.CONSUME(T.Tremolo);
-          this.CONSUME8(T.LParen);
-          this.CONSUME9(T.Identifier);
-          this.CONSUME10(T.Comma);
-          this.CONSUME11(T.NumberLiteral);
-          this.CONSUME12(T.Identifier);
-          this.CONSUME13(T.RParen);
         },
       },
     ]);

@@ -34,7 +34,8 @@ export type TopLevelNode =
   | BassBlock
   | AtmosphereBlock
   | SectionBlock
-  | MelodyBlock;
+  | MelodyBlock
+  | ModifierStatement;
 
 export interface GenreDirective extends ASTNode {
   type: "GenreDirective";

@@ -5,8 +5,10 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - web
-      - parser
+      parser:
+        condition: service_healthy
+      web:
+        condition: service_started
     networks:
       - slapt-net
 
@@ -19,7 +21,8 @@ services:
     networks:
       - slapt-net
     depends_on:
-      - parser
+      parser:
+        condition: service_healthy
 
   parser:
     build:
@@ -29,6 +32,12 @@ services:
       - NODE_ENV=production
     networks:
       - slapt-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
 networks:
   slapt-net:

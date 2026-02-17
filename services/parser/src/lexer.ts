@@ -14,14 +14,19 @@ export const Section = createToken({ name: "Section", pattern: /section/ });
 export const Kick = createToken({ name: "Kick", pattern: /kick/ });
 export const Snare = createToken({ name: "Snare", pattern: /snare/ });
 export const Hihat = createToken({ name: "Hihat", pattern: /hihat/ });
+export const Occasionally = createToken({ name: "Occasionally", pattern: /occasionally/ });
+export const Only = createToken({ name: "Only", pattern: /only/ });
 export const On = createToken({ name: "On", pattern: /on/ });
+export const Inherit = createToken({ name: "Inherit", pattern: /inherit/ });
+export const Increase = createToken({ name: "Increase", pattern: /increase/ });
+export const In = createToken({ name: "In", pattern: /in/ });
 export const And = createToken({ name: "And", pattern: /and/ });
 export const With = createToken({ name: "With", pattern: /with/ });
 export const Using = createToken({ name: "Using", pattern: /using/ });
 export const Times = createToken({ name: "Times", pattern: /times/ });
 export const Per = createToken({ name: "Per", pattern: /per/ });
-export const Bar = createToken({ name: "Bar", pattern: /bar/ });
 export const Bars = createToken({ name: "Bars", pattern: /bars/ });
+export const Bar = createToken({ name: "Bar", pattern: /bar/ });
 export const Every = createToken({ name: "Every", pattern: /every/ });
 export const Beat = createToken({ name: "Beat", pattern: /beat/ });
 export const Pattern = createToken({ name: "Pattern", pattern: /pattern/ });
@@ -55,19 +60,16 @@ export const Softly = createToken({ name: "Softly", pattern: /softly/ });
 export const Tape = createToken({ name: "Tape", pattern: /tape/ });
 export const Wobble = createToken({ name: "Wobble", pattern: /wobble/ });
 export const Subtle = createToken({ name: "Subtle", pattern: /subtle/ });
-export const In = createToken({ name: "In", pattern: /in/ });
 export const Background = createToken({ name: "Background", pattern: /background/ });
 export const At2 = createToken({ name: "At2", pattern: /at/ });
 export const Volume = createToken({ name: "Volume", pattern: /volume/ });
 export const Fade = createToken({ name: "Fade", pattern: /fade/ });
 export const Out = createToken({ name: "Out", pattern: /out/ });
 export const Over = createToken({ name: "Over", pattern: /over/ });
-export const Only = createToken({ name: "Only", pattern: /only/ });
 export const Keep = createToken({ name: "Keep", pattern: /keep/ });
 export const Till = createToken({ name: "Till", pattern: /till/ });
 export const End = createToken({ name: "End", pattern: /end/ });
 export const After = createToken({ name: "After", pattern: /after/ });
-export const Occasionally = createToken({ name: "Occasionally", pattern: /occasionally/ });
 export const Closed = createToken({ name: "Closed", pattern: /closed/ });
 export const Open = createToken({ name: "Open", pattern: /open/ });
 export const Swing = createToken({ name: "Swing", pattern: /swing/ });
@@ -80,8 +82,6 @@ export const Follow = createToken({ name: "Follow", pattern: /follow/ });
 export const Mellow = createToken({ name: "Mellow", pattern: /mellow/ });
 export const Warm = createToken({ name: "Warm", pattern: /warm/ });
 export const Chord = createToken({ name: "Chord", pattern: /chord/ });
-export const Inherit = createToken({ name: "Inherit", pattern: /inherit/ });
-export const Increase = createToken({ name: "Increase", pattern: /increase/ });
 export const Remove = createToken({ name: "Remove", pattern: /remove/ });
 export const More = createToken({ name: "More", pattern: /more/ });
 export const Energetic = createToken({ name: "Energetic", pattern: /energetic/ });
@@ -143,7 +143,12 @@ export const ALL_TOKENS = [
   Hihat,
   Closed,
   Open,
+  Occasionally,
+  Only,
   On,
+  Inherit,
+  Increase,
+  In,
   And,
   With,
   Using,
@@ -184,19 +189,16 @@ export const ALL_TOKENS = [
   Tape,
   Wobble,
   Subtle,
-  In,
   Background,
   At2,
   Volume,
   Fade,
   Out,
   Over,
-  Only,
   Keep,
   Till,
   End,
   After,
-  Occasionally,
   Swing,
   Spread,
   Slight,
@@ -207,8 +209,6 @@ export const ALL_TOKENS = [
   Mellow,
   Warm,
   Chord,
-  Inherit,
-  Increase,
   Remove,
   More,
   Energetic,
