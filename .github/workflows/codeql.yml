@@ -36,3 +36,5 @@ jobs:
         uses: github/codeql-action/analyze@v3
         with:
           category: /language:${{ matrix.language }}
+          upload: ${{ github.event_name != 'pull_request' }}
+        continue-on-error: true
