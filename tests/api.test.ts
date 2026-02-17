@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { describe, it, before, after } from "node:test";
-import { createServer, type Server } from "node:http";
+import { describe, it } from "node:test";
+import type { TestContext } from "node:test";
 
 const BASE = `http://localhost:${process.env.TEST_PARSER_PORT ?? 3001}`;
 
@@ -22,7 +22,7 @@ async function parse(code: string) {
 }
 
 describe("API — health", () => {
-  it("GET /health returns status ok", async () => {
+  it("GET /health returns status ok", async (_t: TestContext) => {
     const res = await fetch(`${BASE}/health`);
     const body = await res.json() as { status: string; service: string };
     assert.equal(res.status, 200);
@@ -32,25 +32,25 @@ describe("API — health", () => {
 });
 
 describe("API — valid code", () => {
-  it("returns success true for minimal valid code", async () => {
+  it("returns success true for minimal valid code", async (_t: TestContext) => {
     const { body } = await parse("@genre lofi-hiphop\n@tempo 75 bpm");
     assert.equal(body.success, true);
     assert.equal(body.errors.length, 0);
   });
 
-  it("returns a non-empty tokens array", async () => {
+  it("returns a non-empty tokens array", async (_t: TestContext) => {
     const { body } = await parse("@genre lofi-hiphop");
     assert.ok(body.tokens.length > 0);
   });
 
-  it("tokens include correct tokenType names", async () => {
+  it("tokens include correct tokenType names", async (_t: TestContext) => {
     const { body } = await parse("@genre lofi-hiphop");
     const types = body.tokens.map((t) => t.tokenType);
     assert.ok(types.includes("At"));
     assert.ok(types.includes("Genre"));
   });
 
-  it("returns empty errors for full valid program", async () => {
+  it("returns empty errors for full valid program", async (_t: TestContext) => {
     const { body } = await parse(`@genre lofi-hiphop
 @tempo 72 bpm
 @key Am
@@ -64,34 +64,36 @@ make it dusty`);
     assert.equal(body.errors.length, 0);
   });
 
-  it("returns success true for empty string input", async () => {
-    const { body } = await parse("");
-    assert.equal(typeof body.success, "boolean");
+  it("returns 200 and success true for empty string input", async (_t: TestContext) => {
+    const { status, body } = await parse("");
+    assert.equal(status, 200);
+    assert.equal(body.success, true);
     assert.ok(Array.isArray(body.tokens));
     assert.ok(Array.isArray(body.errors));
+    assert.equal(body.tokens.length, 0);
   });
 });
 
 describe("API — warnings", () => {
-  it("returns TEMPO_GENRE_MISMATCH warning for 180 bpm lofi-hiphop", async () => {
+  it("returns TEMPO_GENRE_MISMATCH warning for 180 bpm lofi-hiphop", async (_t: TestContext) => {
     const { body } = await parse("@genre lofi-hiphop\n@tempo 180 bpm");
     const codes = body.warnings.map((w) => w.code);
     assert.ok(codes.includes("TEMPO_GENRE_MISMATCH"));
   });
 
-  it("success is still true when only warnings present", async () => {
+  it("success is still true when only warnings present", async (_t: TestContext) => {
     const { body } = await parse("@genre lofi-hiphop\n@tempo 180 bpm");
     assert.equal(body.success, true);
   });
 
-  it("warning includes suggestions", async () => {
+  it("warning includes suggestions", async (_t: TestContext) => {
     const { body } = await parse("@genre lofi-hiphop\n@tempo 180 bpm");
     const warn = body.warnings.find((w) => w.code === "TEMPO_GENRE_MISMATCH");
     assert.ok(warn);
     assert.ok(warn.suggestions.length > 0);
   });
 
-  it("no warnings for in-range tempo", async () => {
+  it("no warnings for in-range tempo", async (_t: TestContext) => {
     const { body } = await parse("@genre lofi-hiphop\n@tempo 75 bpm");
     const tempoWarnings = body.warnings.filter((w) => w.code === "TEMPO_GENRE_MISMATCH");
     assert.equal(tempoWarnings.length, 0);
@@ -99,18 +101,18 @@ describe("API — warnings", () => {
 });
 
 describe("API — errors", () => {
-  it("returns BEAT_OUT_OF_RANGE for beat 5", async () => {
+  it("returns BEAT_OUT_OF_RANGE for beat 5", async (_t: TestContext) => {
     const { body } = await parse("kick on 5");
     const codes = body.errors.map((e) => e.code);
     assert.ok(codes.includes("BEAT_OUT_OF_RANGE"));
   });
 
-  it("success is false when errors present", async () => {
+  it("success is false when errors present", async (_t: TestContext) => {
     const { body } = await parse("kick on 5");
     assert.equal(body.success, false);
   });
 
-  it("beat error includes suggestions", async () => {
+  it("beat error includes suggestions", async (_t: TestContext) => {
     const { body } = await parse("kick on 5");
     const err = body.errors.find((e) => e.code === "BEAT_OUT_OF_RANGE");
     assert.ok(err);
@@ -119,7 +121,7 @@ describe("API — errors", () => {
 });
 
 describe("API — bad requests", () => {
-  it("returns 400 for missing code field", async () => {
+  it("returns 400 for missing code field", async (_t: TestContext) => {
     const res = await fetch(`${BASE}/api/parse`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -128,7 +130,7 @@ describe("API — bad requests", () => {
     assert.equal(res.status, 400);
   });
 
-  it("returns 400 for non-string code", async () => {
+  it("returns 400 for non-string code", async (_t: TestContext) => {
     const res = await fetch(`${BASE}/api/parse`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -137,7 +139,7 @@ describe("API — bad requests", () => {
     assert.equal(res.status, 400);
   });
 
-  it("returns 400 for null code", async () => {
+  it("returns 400 for null code", async (_t: TestContext) => {
     const res = await fetch(`${BASE}/api/parse`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -146,7 +148,7 @@ describe("API — bad requests", () => {
     assert.equal(res.status, 400);
   });
 
-  it("returns 400 for array code", async () => {
+  it("returns 400 for array code", async (_t: TestContext) => {
     const res = await fetch(`${BASE}/api/parse`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

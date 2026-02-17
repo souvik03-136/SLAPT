@@ -10,10 +10,10 @@ app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 
 app.post("/api/parse", (req, res) => {
-  const { code } = req.body as { code?: string };
+  const { code } = req.body as { code?: unknown };
 
-  if (!code || typeof code !== "string") {
-    return res.status(400).json({ error: "Missing code field" });
+  if (typeof code !== "string") {
+    return res.status(400).json({ error: "code must be a string" });
   }
 
   const lexResult = SlaptLexer.tokenize(code);
