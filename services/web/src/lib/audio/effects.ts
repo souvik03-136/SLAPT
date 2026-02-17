@@ -18,6 +18,7 @@ export interface EffectRack {
 }
 
 export async function buildEffectRack(): Promise<EffectRack> {
+  if (typeof window === "undefined") throw new Error("buildEffectRack called server-side");
   const compressor = new Tone.Compressor({ threshold: -20, ratio: 4 });
   const reverb = new Tone.Reverb({ decay: 2.5, wet: 0.4 });
   const bitcrusher = new Tone.BitCrusher(8);
@@ -43,13 +44,13 @@ export function buildSynthRack(fx: EffectRack): SynthRack {
   }).chain(fx.snareFilter, fx.compressor, Tone.getDestination());
 
   const hihat = new Tone.MetalSynth({
-    frequency: 400,
     envelope: { attack: 0.001, decay: 0.05, release: 0.01 },
     harmonicity: 5.1,
     modulationIndex: 32,
     resonance: 4000,
     octaves: 1.5,
   }).toDestination();
+  hihat.frequency.value = 400;
   hihat.volume.value = -10;
 
   const chords = new Tone.PolySynth(Tone.Synth, {

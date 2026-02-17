@@ -138,7 +138,7 @@ tasks:
     desc: Run unit tests only (lexer + error validation, no server needed)
     dir: '{{.TESTS_DIR}}'
     cmds:
-      - node --test --require ts-node/register parser/lexer.test.ts parser/errors.test.ts
+      - node --test --require ts-node/register lexer.test.ts errors.test.ts
 
   test:lexer:
     desc: Run lexer tests only
@@ -163,9 +163,8 @@ tasks:
     cmds:
       - docker compose up -d parser
       - defer: docker compose stop parser
-      - sleep 3
+      - node -e "const s=Date.now();while(Date.now()-s<3000){}"
       - task: test
-
   # ── Type checking ──────────────────────────────────────────────────────────
 
   check:

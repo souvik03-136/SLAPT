@@ -57,10 +57,23 @@ function createSlaptStore() {
 
   return {
     subscribe,
-    setCode: (code: string) => update((s) => ({ ...s, code })),
+    setCode: (code: string) => {
+      // Auto-detect genre and key from code
+      const genreMatch = code.match(/@genre\s+(\S+)/);
+      const keyMatch = code.match(/@key\s+(\S+)/);
+      const tempoMatch = code.match(/@tempo\s+(\d+(?:\.\d+)?)\s+bpm/i);
+      update((s) => ({
+        ...s,
+        code,
+        genre: genreMatch?.[1] ?? s.genre,
+        key: keyMatch?.[1] ?? s.key,
+        tempo: tempoMatch ? parseFloat(tempoMatch[1]) : s.tempo,
+      }));
+    },
     setParseResult: (parseResult: ParseResult) => update((s) => ({ ...s, parseResult })),
     setPlaybackState: (playbackState: PlaybackState) => update((s) => ({ ...s, playbackState })),
     setTempo: (tempo: number) => update((s) => ({ ...s, tempo })),
+    setGenre: (genre: string) => update((s) => ({ ...s, genre })),
     setCurrentBar: (currentBar: number) => update((s) => ({ ...s, currentBar })),
     setLoading: (isLoading: boolean) => update((s) => ({ ...s, isLoading })),
   };

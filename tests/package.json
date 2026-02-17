@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "test": "node --test --require ts-node/register parser/lexer.test.ts parser/errors.test.ts parser/api.test.ts",
-    "test:lexer": "node --test --require ts-node/register parser/lexer.test.ts",
-    "test:errors": "node --test --require ts-node/register parser/errors.test.ts",
-    "test:api": "node --test --require ts-node/register parser/api.test.ts"
+    "test": "node --test --require ts-node/register lexer.test.ts errors.test.ts api.test.ts",
+    "test:lexer": "node --test --require ts-node/register lexer.test.ts",
+    "test:errors": "node --test --require ts-node/register errors.test.ts",
+    "test:api": "node --test --require ts-node/register api.test.ts"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

@@ -1,181 +1,153 @@
 <script lang="ts">
-  import { slaptStore } from "../stores/slapt";
-
-  const TOTAL_BARS = 16;
-  $: currentBar = $slaptStore.currentBar % TOTAL_BARS;
-
-  function extractKickBeats(code: string): number[] {
-    const m = code.match(/kick\s+pattern\s+\[([\d.,\s]+)\]/);
-    if (m) return m[1].split(",").map((n) => parseFloat(n.trim()));
-    const m2 = code.match(/kick\s+on\s+([\d\s]+and[\d\s]+)/);
-    if (m2) return m2[1].split(/\s+and\s+/).map((n) => parseFloat(n.trim()));
-    return [1, 3];
-  }
-
-  function extractSnareBeats(code: string): number[] {
-    const m = code.match(/snare\s+on\s+([\d\s]+and[\d\s]+)/);
-    if (m) return m[1].split(/\s+and\s+/).map((n) => parseFloat(n.trim()));
-    return [2, 4];
-  }
-
-  function extractHihatCount(code: string): number {
-    const m = code.match(/hihat\s+(?:closed\s+)?(\d+)\s+times/);
-    return m ? parseInt(m[1]) : 8;
-  }
-
-  $: kicks = extractKickBeats($slaptStore.code);
-  $: snares = extractSnareBeats($slaptStore.code);
-  $: hihatCount = extractHihatCount($slaptStore.code);
-
-  const STEPS = 16;
-  $: kickSteps = Array.from({ length: STEPS }, (_, i) => {
-    const beat = (i / 4) + 1;
-    return kicks.some((k) => Math.abs(k - beat) < 0.2);
-  });
-  $: snareSteps = Array.from({ length: STEPS }, (_, i) => {
-    const beat = (i / 4) + 1;
-    return snares.some((s) => Math.abs(s - beat) < 0.2);
-  });
-  $: hihatSteps = Array.from({ length: STEPS }, (_, i) => {
-    const interval = STEPS / hihatCount;
-    return i % interval < 1;
-  });
+  import { slaptStore, hasErrors, hasWarnings } from "../stores/slapt";
 </script>
 
-<div class="timeline">
-  <div class="timeline-header">
-    <span class="label">PATTERN</span>
-    <div class="beat-markers">
-      {#each [1, 2, 3, 4] as b}
-        <span class="beat-marker">{b}</span>
-      {/each}
-    </div>
+{#if $hasErrors || $hasWarnings}
+  <div class="error-panel">
+    {#if $hasErrors}
+      <div class="section errors">
+        <span class="section-label">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          ERRORS
+        </span>
+        {#each $slaptStore.parseResult?.errors ?? [] as err}
+          <div class="item error">
+            <div class="item-header">
+              {#if err.line}<span class="location">line {err.line}{err.column ? `:${err.column}` : ''}</span>{/if}
+              <span class="code">{err.code}</span>
+            </div>
+            <p class="message">{err.message}</p>
+            {#if err.suggestions?.length}
+              <ul class="suggestions">
+                {#each err.suggestions as s}
+                  <li>{s}</li>
+                {/each}
+              </ul>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    {/if}
+
+    {#if $hasWarnings}
+      <div class="section warnings">
+        <span class="section-label">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          WARNINGS
+        </span>
+        {#each $slaptStore.parseResult?.warnings ?? [] as warn}
+          <div class="item warning">
+            <div class="item-header">
+              <span class="code">{warn.code}</span>
+            </div>
+            <p class="message">{warn.message}</p>
+            {#if warn.suggestions?.length}
+              <ul class="suggestions">
+                {#each warn.suggestions as s}
+                  <li>{s}</li>
+                {/each}
+              </ul>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    {/if}
   </div>
-
-  <div class="rows">
-    <div class="row">
-      <span class="row-label">KICK</span>
-      <div class="steps">
-        {#each kickSteps as active, i}
-          <div
-            class="step kick"
-            class:active
-            class:current={$slaptStore.playbackState === "playing" &&
-              Math.floor((i / STEPS) * 4) === ((currentBar * 4) % 4)}
-          />
-        {/each}
-      </div>
-    </div>
-
-    <div class="row">
-      <span class="row-label">SNARE</span>
-      <div class="steps">
-        {#each snareSteps as active, i}
-          <div class="step snare" class:active />
-        {/each}
-      </div>
-    </div>
-
-    <div class="row">
-      <span class="row-label">HIHAT</span>
-      <div class="steps">
-        {#each hihatSteps as active, i}
-          <div class="step hihat" class:active />
-        {/each}
-      </div>
-    </div>
-  </div>
-</div>
+{/if}
 
 <style>
-  .timeline {
-    padding: 12px 16px;
+  .error-panel {
     background: var(--bg-panel);
     border-top: 1px solid var(--border);
-  }
-
-  .timeline-header {
+    max-height: 160px;
+    overflow-y: auto;
+    padding: 8px 16px;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 10px;
+    flex-direction: column;
+    gap: 8px;
   }
 
-  .label {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text-muted);
-    letter-spacing: 0.12em;
-  }
-
-  .beat-markers {
-    display: flex;
-    gap: 0;
-    width: calc(100% - 64px);
-    justify-content: space-around;
-  }
-
-  .beat-marker {
-    font-family: var(--font-mono);
-    font-size: 9px;
-    color: var(--text-muted);
-    letter-spacing: 0.05em;
-  }
-
-  .rows {
+  .section {
     display: flex;
     flex-direction: column;
     gap: 6px;
   }
 
-  .row {
+  .section-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .errors .section-label { color: var(--accent-danger); }
+  .warnings .section-label { color: var(--accent-warn); }
+
+  .item {
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    border-left: 2px solid;
+    background: var(--bg-elevated);
+  }
+
+  .item.error { border-color: var(--accent-danger); }
+  .item.warning { border-color: var(--accent-warn); }
+
+  .item-header {
     display: flex;
     align-items: center;
     gap: 8px;
+    margin-bottom: 2px;
   }
 
-  .row-label {
+  .location {
     font-family: var(--font-mono);
-    font-size: 9px;
+    font-size: 10px;
     color: var(--text-muted);
-    width: 40px;
-    letter-spacing: 0.08em;
-    flex-shrink: 0;
   }
 
-  .steps {
-    display: flex;
-    gap: 3px;
-    flex: 1;
-  }
-
-  .step {
-    flex: 1;
-    height: 22px;
+  .code {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-secondary);
+    background: var(--bg-surface);
+    padding: 1px 5px;
     border-radius: 2px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    transition: all 0.1s ease;
+  }
+
+  .message {
+    font-size: 12px;
+    color: var(--text-primary);
+    line-height: 1.4;
+  }
+
+  .suggestions {
+    margin-top: 4px;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .suggestions li {
+    font-size: 11px;
+    color: var(--text-secondary);
+    padding-left: 12px;
     position: relative;
   }
 
-  .step.active.kick {
-    background: var(--accent-primary);
-    border-color: var(--accent-primary);
-    box-shadow: 0 0 6px rgba(200, 240, 96, 0.4);
-  }
-
-  .step.active.snare {
-    background: var(--accent-warm);
-    border-color: var(--accent-warm);
-    box-shadow: 0 0 6px rgba(240, 160, 96, 0.4);
-  }
-
-  .step.active.hihat {
-    background: var(--accent-cool);
-    border-color: var(--accent-cool);
-    box-shadow: 0 0 6px rgba(96, 200, 240, 0.3);
-    height: 12px;
-    margin-top: 5px;
+  .suggestions li::before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    color: var(--text-muted);
   }
 </style>

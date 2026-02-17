@@ -4,6 +4,12 @@
   import Timeline from "$lib/components/Timeline.svelte";
   import ErrorPanel from "$lib/components/ErrorPanel.svelte";
   import { slaptStore } from "$lib/stores/slapt";
+
+  function applyGenre(g: string) {
+    const current = $slaptStore.code;
+    const updated = current.replace(/@genre\s+\S+/, `@genre ${g}`);
+    slaptStore.setCode(updated !== current ? updated : `@genre ${g}\n` + current);
+  }
 </script>
 
 <div class="app">
@@ -34,7 +40,7 @@
             <button
               class="template-btn"
               class:active={$slaptStore.genre === g}
-              on:click={() => {}}
+              on:click={() => applyGenre(g)}
             >
               {g}
             </button>

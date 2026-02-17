@@ -20,15 +20,15 @@ export interface ScheduledParts {
 }
 
 const CHORD_VOICINGS: Record<string, string[]> = {
-  Am7:    ["A3", "C4", "E4", "G4"],
-  Fmaj7:  ["F3", "A3", "C4", "E4"],
-  Dm7:    ["D3", "F3", "A3", "C4"],
-  E7:     ["E3", "G#3", "B3", "D4"],
-  Cmaj7:  ["C3", "E3", "G3", "B3"],
-  Gmaj7:  ["G3", "B3", "D4", "F#4"],
-  Am:     ["A3", "C4", "E4"],
-  Dm:     ["D3", "F3", "A3"],
-  Em:     ["E3", "G3", "B3"],
+  Am7:   ["A3", "C4", "E4", "G4"],
+  Fmaj7: ["F3", "A3", "C4", "E4"],
+  Dm7:   ["D3", "F3", "A3", "C4"],
+  E7:    ["E3", "G#3", "B3", "D4"],
+  Cmaj7: ["C3", "E3", "G3", "B3"],
+  Gmaj7: ["G3", "B3", "D4", "F#4"],
+  Am:    ["A3", "C4", "E4"],
+  Dm:    ["D3", "F3", "A3"],
+  Em:    ["E3", "G3", "B3"],
 };
 
 const BASS_ROOTS: Record<string, string> = {
@@ -51,17 +51,11 @@ export function scheduleDrums(pattern: DrumPattern, synths: SynthRack): Tone.Par
   const events: DrumEvent[] = [];
 
   for (const beat of pattern.kick) {
-    events.push({
-      time: beatsToTransportTime(beat),
-      type: "kick",
-    });
+    events.push({ time: beatsToTransportTime(beat), type: "kick" });
   }
 
   for (const beat of pattern.snare) {
-    events.push({
-      time: beatsToTransportTime(beat),
-      type: "snare",
-    });
+    events.push({ time: beatsToTransportTime(beat), type: "snare" });
   }
 
   const hihatInterval = 4 / pattern.hihat.count;
@@ -143,6 +137,6 @@ function beatsToTransportTime(beat: number): string {
   const zeroBased = beat - 1;
   const bar = Math.floor(zeroBased / 4);
   const beatInBar = Math.floor(zeroBased % 4);
-  const sixteenth = Math.round(((zeroBased % 1) * 4)) ;
+  const sixteenth = Math.round((zeroBased % 1) * 4);
   return `${bar}:${beatInBar}:${sixteenth}`;
 }

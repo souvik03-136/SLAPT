@@ -26,7 +26,12 @@ let barCount = 0;
 let onBarChange: ((bar: number) => void) | null = null;
 let initialized = false;
 
+function isBrowser(): boolean {
+  return typeof window !== "undefined";
+}
+
 export async function initAudio(): Promise<void> {
+  if (!isBrowser()) return;
   if (initialized) return;
   await Tone.start();
   fx = await buildEffectRack();
@@ -39,6 +44,7 @@ export function setBarChangeCallback(cb: (bar: number) => void): void {
 }
 
 export async function playDrums(pattern: DrumPattern, tempo: number): Promise<void> {
+  if (!isBrowser()) return;
   await initAudio();
   Tone.getTransport().bpm.value = tempo;
 
@@ -53,6 +59,7 @@ export async function playChords(
   _instrument: string,
   tempo: number
 ): Promise<void> {
+  if (!isBrowser()) return;
   await initAudio();
   Tone.getTransport().bpm.value = tempo;
 
@@ -61,6 +68,7 @@ export async function playChords(
 }
 
 export async function playBass(progression: string[], _tempo: number): Promise<void> {
+  if (!isBrowser()) return;
   await initAudio();
 
   parts.bass?.dispose();
@@ -68,6 +76,7 @@ export async function playBass(progression: string[], _tempo: number): Promise<v
 }
 
 export function startPlayback(): void {
+  if (!isBrowser()) return;
   barCount = 0;
 
   if (barRepeatId !== null) {
@@ -84,6 +93,7 @@ export function startPlayback(): void {
 }
 
 export function stopPlayback(): void {
+  if (!isBrowser()) return;
   Tone.getTransport().stop();
   Tone.getTransport().cancel();
   barCount = 0;
@@ -91,14 +101,17 @@ export function stopPlayback(): void {
 }
 
 export function pausePlayback(): void {
+  if (!isBrowser()) return;
   Tone.getTransport().pause();
 }
 
 export function setTempo(bpm: number): void {
+  if (!isBrowser()) return;
   Tone.getTransport().bpm.value = bpm;
 }
 
 export function cleanup(): void {
+  if (!isBrowser()) return;
   stopPlayback();
   disposeParts(parts);
   if (synths) disposeSynthRack(synths);
