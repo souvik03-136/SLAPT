@@ -3,6 +3,7 @@ export interface ParseResult {
   errors: SlaptError[];
   warnings: SlaptWarning[];
   success: boolean;
+  program?: SlaptProgram | null;
 }
 
 export interface TokenInfo {
@@ -39,4 +40,43 @@ export interface SlaptStore {
   key: string;
   currentBar: number;
   isLoading: boolean;
+}
+
+export interface SlaptProgram {
+  genre: string;
+  tempo: number;
+  key: string;
+  drums: DrumProgramOutput | null;
+  chords: ChordProgramOutput | null;
+  bass: BassProgramOutput | null;
+  atmosphere: AtmosphereProgramOutput | null;
+  modifiers: string[];
+}
+
+export interface DrumProgramOutput {
+  swing: number;
+  kick: number[];
+  snare: number[];
+  hihat: { count: number; type: string };
+  effects: string[];
+}
+
+export interface ChordProgramOutput {
+  instrument: string;
+  progression: string[];
+  voicing: string;
+  rhythm: string;
+  effects: string[];
+}
+
+export interface BassProgramOutput {
+  style: string;
+  sound: string;
+  filter: string;
+}
+
+export interface AtmosphereProgramOutput {
+  vinylCrackle: number;
+  rain: boolean;
+  tapeWobble: boolean;
 }

@@ -18,53 +18,42 @@
   setBarChangeCallback((bar) => slaptStore.setCurrentBar(bar));
 
   async function handlePlay() {
-    const { code, parseResult } = $slaptStore;
+    const { parseResult } = $slaptStore;
     if (!parseResult?.success) return;
+
+    const program = parseResult.program;
+    if (!program) return;
 
     await initAudio();
 
-    const genreMatch = code.match(/@genre\s+(\S+)/);
-    const tempoMatch = code.match(/@tempo\s+(\d+(?:\.\d+)?)\s+bpm/i);
-    const tempo = tempoMatch ? parseFloat(tempoMatch[1]) : 75;
+    const tempo = program.tempo ?? 75;
 
-    const hasDusty = code.includes("make it dusty");
-    const hasGroovy = code.includes("make it groovy");
+    // Drums from parsed program
+    if (program.drums) {
+      const { kick, snare, hihat, swing, effects } = program.drums;
 
-    const kickMatches = code.match(/kick\s+pattern\s+\[([\d.,\s]+)\]/);
-    const kickBeats = kickMatches
-      ? kickMatches[1].split(",").map((n) => parseFloat(n.trim()))
-      : [1, 3];
+      // Apply groovy/dusty modifiers
+      const isGroovy = program.modifiers.includes("groovy");
+      const isDusty = program.modifiers.includes("dusty");
 
-    const snareMatches = code.match(/snare\s+on\s+([\d\s]+and[\d\s]+)/);
-    const snareBeats = snareMatches
-      ? snareMatches[1].split(/\s+and\s+/).map((n) => parseFloat(n.trim()))
-      : [2, 4];
+      await playDrums(
+        {
+          kick: kick.length ? kick : [1, 3],
+          snare: snare.length ? snare : [2, 4],
+          hihat: { count: hihat.count ?? 8, type: "closed" },
+          swing: swing ?? (isGroovy ? 60 : 0),
+          effects: isDusty && !effects.includes("bitcrush")
+            ? [...effects, "bitcrush"]
+            : effects,
+        },
+        tempo
+      );
+    }
 
-    const hihatMatch = code.match(/hihat\s+(?:closed\s+)?(\d+)\s+times/);
-    const hihatCount = hihatMatch ? parseInt(hihatMatch[1]) : 8;
-
-    const swingMatch = code.match(/swing\((\d+)%\)/);
-    const swing = swingMatch ? parseInt(swingMatch[1]) : hasGroovy ? 60 : 0;
-
-    await playDrums(
-      {
-        kick: kickBeats,
-        snare: snareBeats,
-        hihat: { count: hihatCount, type: "closed" },
-        swing,
-        effects: hasDusty ? ["bitcrush"] : [],
-      },
-      tempo
-    );
-
-    const progressionMatch = code.match(/progression\s+([\w#♭→\s]+)/);
-    if (progressionMatch) {
-      const progression = progressionMatch[1]
-        .split("→")
-        .map((c) => c.trim())
-        .filter(Boolean);
-      await playChords(progression, "piano", tempo);
-      await playBass(progression, tempo);
+    // Chords and bass from parsed program
+    if (program.chords?.progression?.length) {
+      await playChords(program.chords.progression, program.chords.instrument, tempo);
+      await playBass(program.chords.progression, tempo);
     }
 
     startPlayback();

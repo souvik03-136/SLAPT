@@ -4,28 +4,11 @@
   const TOTAL_BARS = 16;
   $: currentBar = $slaptStore.currentBar % TOTAL_BARS;
 
-  function extractKickBeats(code: string): number[] {
-    const m = code.match(/kick\s+pattern\s+\[([\d.,\s]+)\]/);
-    if (m) return m[1].split(",").map((n) => parseFloat(n.trim()));
-    const m2 = code.match(/kick\s+on\s+([\d\s]+and[\d\s]+)/);
-    if (m2) return m2[1].split(/\s+and\s+/).map((n) => parseFloat(n.trim()));
-    return [1, 3];
-  }
+  $: program = $slaptStore.parseResult?.program;
 
-  function extractSnareBeats(code: string): number[] {
-    const m = code.match(/snare\s+on\s+([\d\s]+and[\d\s]+)/);
-    if (m) return m[1].split(/\s+and\s+/).map((n) => parseFloat(n.trim()));
-    return [2, 4];
-  }
-
-  function extractHihatCount(code: string): number {
-    const m = code.match(/hihat\s+(?:closed\s+)?(\d+)\s+times/);
-    return m ? parseInt(m[1]) : 8;
-  }
-
-  $: kicks = extractKickBeats($slaptStore.code);
-  $: snares = extractSnareBeats($slaptStore.code);
-  $: hihatCount = extractHihatCount($slaptStore.code);
+  $: kicks = program?.drums?.kick ?? [1, 3];
+  $: snares = program?.drums?.snare ?? [2, 4];
+  $: hihatCount = program?.drums?.hihat?.count ?? 8;
 
   const STEPS = 16;
   $: kickSteps = Array.from({ length: STEPS }, (_, i) => {

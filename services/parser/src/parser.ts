@@ -73,6 +73,7 @@ class SlaptParser extends CstParser {
     this.OR([
       { ALT: () => this.SUBRULE(this.kickPattern) },
       { ALT: () => this.SUBRULE(this.snarePattern) },
+      { ALT: () => this.SUBRULE(this.velocityStatement) },
       { ALT: () => this.SUBRULE(this.hihatPattern) },
       { ALT: () => this.SUBRULE(this.drumEffect) },
     ]);
@@ -156,6 +157,11 @@ class SlaptParser extends CstParser {
     this.CONSUME(T.RParen);
   });
 
+  velocityStatement = this.RULE("velocityStatement", () => {
+    this.CONSUME(T.Snare);
+    this.SUBRULE(this.velocityRange);
+  });
+
   drumEffect = this.RULE("drumEffect", () => {
     this.OR([
       {
@@ -164,7 +170,8 @@ class SlaptParser extends CstParser {
           this.CONSUME(T.Identifier);
           this.OPTION(() => {
             this.CONSUME(T.LParen);
-            this.CONSUME2(T.Identifier);
+            this.OPTION2(() => this.CONSUME(T.NumberLiteral));
+            this.OPTION3(() => this.CONSUME2(T.Identifier));
             this.CONSUME(T.RParen);
           });
         },
@@ -172,9 +179,16 @@ class SlaptParser extends CstParser {
       {
         ALT: () => {
           this.CONSUME(T.Compress);
-          this.OPTION2(() => {
-            this.CONSUME(T.With);
-            this.CONSUME3(T.Identifier);
+          this.OPTION4(() => {
+            this.OR2([
+              { ALT: () => this.CONSUME(T.Heavily) },
+              {
+                ALT: () => {
+                  this.CONSUME(T.With);
+                  this.CONSUME3(T.Identifier);
+                },
+              },
+            ]);
           });
         },
       },
@@ -182,7 +196,7 @@ class SlaptParser extends CstParser {
         ALT: () => {
           this.CONSUME(T.Filter);
           this.CONSUME4(T.Identifier);
-          this.CONSUME(T.NumberLiteral);
+          this.CONSUME4(T.NumberLiteral);
           this.CONSUME5(T.Identifier);
         },
       },
@@ -214,13 +228,17 @@ class SlaptParser extends CstParser {
       {
         ALT: () => {
           this.CONSUME(T.Voicing);
-          this.CONSUME2(T.Identifier);
+          this.OR2([
+            { ALT: () => this.CONSUME2(T.Identifier) },
+            { ALT: () => this.CONSUME(T.Spread) },
+          ]);
         },
       },
       {
         ALT: () => {
           this.CONSUME(T.Rhythm);
           this.CONSUME3(T.Identifier);
+          this.OPTION2(() => this.CONSUME4(T.Identifier));
           this.OPTION(() => {
             this.CONSUME(T.With);
             this.CONSUME(T.Slight);
@@ -285,19 +303,30 @@ class SlaptParser extends CstParser {
         ALT: () => {
           this.CONSUME(T.Follow);
           this.CONSUME(T.Chord);
-          this.CONSUME(T.Identifier);
+          this.OR2([
+            { ALT: () => this.CONSUME(T.Identifier) },
+            { ALT: () => this.CONSUME(T.Progression) },
+          ]);
         },
       },
       {
         ALT: () => {
           this.CONSUME(T.Sound);
-          this.CONSUME2(T.Identifier);
+          this.OR3([
+            { ALT: () => this.CONSUME2(T.Identifier) },
+            { ALT: () => this.CONSUME(T.Mellow) },
+            { ALT: () => this.CONSUME(T.Warm) },
+          ]);
         },
       },
       {
         ALT: () => {
           this.CONSUME(T.Filter);
-          this.CONSUME3(T.Identifier);
+          this.OR4([
+            { ALT: () => this.CONSUME3(T.Identifier) },
+            { ALT: () => this.CONSUME2(T.Warm) },
+            { ALT: () => this.CONSUME2(T.Mellow) },
+          ]);
         },
       },
     ]);
@@ -370,6 +399,12 @@ class SlaptParser extends CstParser {
         { ALT: () => this.CONSUME(T.Up) },
         { ALT: () => this.CONSUME(T.Energy) },
         { ALT: () => this.CONSUME(T.Increase) },
+        { ALT: () => this.CONSUME(T.Drums) },
+        { ALT: () => this.CONSUME(T.Atmosphere) },
+        { ALT: () => this.CONSUME(T.Chords) },
+        { ALT: () => this.CONSUME(T.Bass) },
+        { ALT: () => this.CONSUME(T.Vinyl) },
+        { ALT: () => this.CONSUME(T.Crackle) },
       ]);
     });
   });
