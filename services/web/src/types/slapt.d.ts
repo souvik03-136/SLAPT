@@ -57,7 +57,9 @@ export interface DrumProgramOutput {
   swing: number;
   kick: number[];
   snare: number[];
-  hihat: { count: number; type: string };
+  // FIX: was `string` — narrowed to the same union used by the audio scheduler
+  // so Controls.svelte can pass drums.hihat directly without a type error.
+  hihat: { count: number; type: "closed" | "open" | "mixed" };
   effects: string[];
 }
 

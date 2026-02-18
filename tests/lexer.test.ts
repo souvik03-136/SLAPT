@@ -94,7 +94,10 @@ describe("Lexer — drum block", () => {
 
 describe("Lexer — chord block", () => {
   it("tokenizes chord progression with arrows", (_t: TestContext) => {
-    const { tokens, errors } = SlaptLexer.tokenize("progression Am7 → Fmaj7 → Dm7 → E7");
+    // ASCII -> not Unicode → — lexer only accepts ->
+    const { tokens, errors } = SlaptLexer.tokenize(
+      "progression Am7 -> Fmaj7 -> Dm7 -> E7"
+    );
     assert.equal(errors.length, 0);
     const arrows = tokens.filter((t) => t.tokenType.name === "Arrow");
     assert.equal(arrows.length, 3);
@@ -186,6 +189,7 @@ drums with swing(60%):
   });
 
   it("produces no errors on a full program with all blocks", (_t: TestContext) => {
+    // ASCII -> not Unicode → — lexer only accepts ->
     const code = `@genre lofi-hiphop
 @tempo 72 bpm
 @key Am
@@ -196,7 +200,7 @@ drums with swing(60%):
   snare on 2 and 4
   hihat closed 8 times
 chords using rhodes piano:
-  progression Am7 → Fmaj7 → Dm7 → E7
+  progression Am7 -> Fmaj7 -> Dm7 -> E7
   reverb(medium, dreamy)
 bass walking the roots:
   follow chord progression

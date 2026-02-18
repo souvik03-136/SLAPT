@@ -149,7 +149,7 @@ function buildProgramFromCode(code: string): object {
       swing,
       kick,
       snare,
-      hihat: { count: hihatCount, type: "closed" },
+      hihat: { count: hihatCount, type: "closed" as const },
       effects,
     };
   }
