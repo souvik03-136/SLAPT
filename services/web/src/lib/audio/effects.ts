@@ -9,9 +9,11 @@ export interface SynthRack {
 }
 
 export interface EffectRack {
-  compressor: Tone.Compressor;
+  kickCompressor: Tone.Compressor;   // FIX: separate compressor for kick
+  snareCompressor: Tone.Compressor;  // FIX: separate compressor for snare
   reverb: Tone.Reverb;
-  bitcrusher: Tone.BitCrusher;
+  kickBitcrusher: Tone.BitCrusher;   // FIX: separate bitcrusher for kick
+  snareBitcrusher: Tone.BitCrusher;  // FIX: separate bitcrusher for snare
   tremolo: Tone.Tremolo;
   snareFilter: Tone.Filter;
   bassFilter: Tone.Filter;
@@ -19,29 +21,44 @@ export interface EffectRack {
 
 export async function buildEffectRack(): Promise<EffectRack> {
   if (typeof window === "undefined") throw new Error("buildEffectRack called server-side");
-  const compressor = new Tone.Compressor({ threshold: -20, ratio: 4 });
-  const reverb = new Tone.Reverb({ decay: 2.5, wet: 0.4 });
-  const bitcrusher = new Tone.BitCrusher(8);
-  const tremolo = new Tone.Tremolo({ frequency: 4, depth: 0.3 }).start();
-  const snareFilter = new Tone.Filter({ frequency: 800, type: "lowpass" });
-  const bassFilter = new Tone.Filter({ frequency: 600, type: "lowpass" });
+
+  const kickCompressor  = new Tone.Compressor({ threshold: -20, ratio: 4 });
+  const snareCompressor = new Tone.Compressor({ threshold: -18, ratio: 3 });
+  const reverb          = new Tone.Reverb({ decay: 2.5, wet: 0.4 });
+  const kickBitcrusher  = new Tone.BitCrusher(8);
+  const snareBitcrusher = new Tone.BitCrusher(8);
+  const tremolo         = new Tone.Tremolo({ frequency: 4, depth: 0.3 }).start();
+  const snareFilter     = new Tone.Filter({ frequency: 800, type: "lowpass" });
+  const bassFilter      = new Tone.Filter({ frequency: 600, type: "lowpass" });
 
   await reverb.generate();
 
-  return { compressor, reverb, bitcrusher, tremolo, snareFilter, bassFilter };
+  return {
+    kickCompressor,
+    snareCompressor,
+    reverb,
+    kickBitcrusher,
+    snareBitcrusher,
+    tremolo,
+    snareFilter,
+    bassFilter,
+  };
 }
 
 export function buildSynthRack(fx: EffectRack): SynthRack {
+  // FIX: kick -> its own compressor only, no shared path with snare
   const kick = new Tone.MembraneSynth({
     pitchDecay: 0.06,
     octaves: 8,
     envelope: { attack: 0.001, decay: 0.3, sustain: 0, release: 0.1 },
-  }).chain(fx.compressor, Tone.getDestination());
+  }).chain(fx.kickCompressor, Tone.getDestination());
 
+  // FIX: snare -> snareFilter -> its own snareCompressor, completely isolated from kick
+  // NoiseSynth envelope sustain=0 ensures noise is fully gated between hits
   const snare = new Tone.NoiseSynth({
     noise: { type: "white" },
-    envelope: { attack: 0.001, decay: 0.15, sustain: 0, release: 0.05 },
-  }).chain(fx.snareFilter, fx.compressor, Tone.getDestination());
+    envelope: { attack: 0.001, decay: 0.15, sustain: 0, release: 0.01 }, // FIX: release 0.05->0.01, tighter gate
+  }).chain(fx.snareFilter, fx.snareCompressor, Tone.getDestination());
 
   const hihat = new Tone.MetalSynth({
     envelope: { attack: 0.001, decay: 0.05, release: 0.01 },
@@ -68,22 +85,37 @@ export function buildSynthRack(fx: EffectRack): SynthRack {
   return { kick, snare, hihat, chords, bass };
 }
 
+// FIX: track whether bitcrush routing has been applied so we never double-chain
+let bitcrushApplied = false;
+
+export function resetEffectState(): void {
+  bitcrushApplied = false;
+}
+
 export function applyDrumEffects(synths: SynthRack, fx: EffectRack, effects: string[]): void {
-  if (effects.includes("bitcrush")) {
+  if (effects.includes("bitcrush") && !bitcrushApplied) {
+    bitcrushApplied = true;
+
+    // FIX: kick gets its OWN bitcrusher instance, no bleed from snare
     synths.kick.disconnect();
-    synths.kick.chain(fx.bitcrusher, fx.compressor, Tone.getDestination());
+    synths.kick.chain(fx.kickBitcrusher, fx.kickCompressor, Tone.getDestination());
+
+    // FIX: snare gets its OWN bitcrusher instance, completely separate chain
     synths.snare.disconnect();
-    synths.snare.chain(fx.bitcrusher, fx.snareFilter, fx.compressor, Tone.getDestination());
+    synths.snare.chain(fx.snareBitcrusher, fx.snareFilter, fx.snareCompressor, Tone.getDestination());
   }
 }
 
 export function disposeEffectRack(fx: EffectRack): void {
-  fx.compressor.dispose();
+  fx.kickCompressor.dispose();
+  fx.snareCompressor.dispose();
   fx.reverb.dispose();
-  fx.bitcrusher.dispose();
+  fx.kickBitcrusher.dispose();
+  fx.snareBitcrusher.dispose();
   fx.tremolo.dispose();
   fx.snareFilter.dispose();
   fx.bassFilter.dispose();
+  bitcrushApplied = false;
 }
 
 export function disposeSynthRack(synths: SynthRack): void {

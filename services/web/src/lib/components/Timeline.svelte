@@ -1,69 +1,114 @@
 <script lang="ts">
-  import { slaptStore } from "../stores/slapt";
+  import { slaptStore } from "$lib/stores/slapt";
 
-  const TOTAL_BARS = 16;
-  $: currentBar = $slaptStore.currentBar % TOTAL_BARS;
+  const STEPS = 16; // 16th-note resolution (4 beats * 4 subdivisions)
 
-  $: program = $slaptStore.parseResult?.program;
+  $: drums = $slaptStore.parseResult?.program?.drums;
 
-  $: kicks = program?.drums?.kick ?? [1, 3];
-  $: snares = program?.drums?.snare ?? [2, 4];
-  $: hihatCount = program?.drums?.hihat?.count ?? 8;
+  // Convert a beat number (1-based, decimal) to a 0-based step index (0..15)
+  // beat 1.0 -> step 0, beat 2.0 -> step 4, beat 3.0 -> step 8, beat 4.0 -> step 12
+  function beatToStep(beat: number): number {
+    return Math.round((beat - 1) * 4);
+  }
 
-  const STEPS = 16;
-  $: kickSteps = Array.from({ length: STEPS }, (_, i) => {
-    const beat = (i / 4) + 1;
-    return kicks.some((k) => Math.abs(k - beat) < 0.2);
-  });
-  $: snareSteps = Array.from({ length: STEPS }, (_, i) => {
-    const beat = (i / 4) + 1;
-    return snares.some((s) => Math.abs(s - beat) < 0.2);
-  });
-  $: hihatSteps = Array.from({ length: STEPS }, (_, i) => {
-    const interval = STEPS / hihatCount;
-    return i % interval < 1;
-  });
+  // FIX: build a Set of active steps for O(1) lookup, handles decimal beats properly
+  $: kickSteps = new Set<number>(
+    (drums?.kick ?? []).map(beatToStep).filter((s) => s >= 0 && s < STEPS)
+  );
+
+  $: snareSteps = new Set<number>(
+    (drums?.snare ?? []).map(beatToStep).filter((s) => s >= 0 && s < STEPS)
+  );
+
+  // FIX: hihat evenly divides STEPS by count. If count=0 -> no hihat steps.
+  $: hihatSteps = (() => {
+    const count = drums?.hihat?.count ?? 0;
+    if (count <= 0) return new Set<number>();
+    const interval = STEPS / count; // e.g. count=8 -> interval=2 -> steps 0,2,4,6,8,10,12,14
+    const s = new Set<number>();
+    for (let i = 0; i < count; i++) {
+      s.add(Math.round(i * interval));
+    }
+    return s;
+  })();
+
+  // Generate step indices 0..15
+  const stepIndices = Array.from({ length: STEPS }, (_, i) => i);
+
+  // Beat label positions: beats 1-4 sit at steps 0,4,8,12
+  // We render them as absolute overlays so they never affect the grid column widths
+  const beatLabels = [
+    { beat: 1, step: 0  },
+    { beat: 2, step: 4  },
+    { beat: 3, step: 8  },
+    { beat: 4, step: 12 },
+  ];
 </script>
 
 <div class="timeline">
-  <div class="timeline-header">
-    <span class="label">PATTERN</span>
-    <div class="beat-markers">
-      {#each [1, 2, 3, 4] as b}
-        <span class="beat-marker">{b}</span>
-      {/each}
+  <!-- Beat label row: absolutely positioned over the grid so it doesn't break columns -->
+  <div class="row header-row">
+    <div class="row-label">PATTERN</div>
+    <div class="grid-wrapper">
+      <!-- FIX: beat labels are overlaid via absolute positioning, 
+           each at exactly (step / STEPS * 100%) of grid width -->
+      <div class="beat-labels">
+        {#each beatLabels as { beat, step }}
+          <span
+            class="beat-label"
+            style="left: {(step / STEPS) * 100}%"
+          >{beat}</span>
+        {/each}
+      </div>
     </div>
   </div>
 
-  <div class="rows">
-    <div class="row">
-      <span class="row-label">KICK</span>
-      <div class="steps">
-        {#each kickSteps as active, i}
+  <!-- Kick row -->
+  <div class="row">
+    <div class="row-label">KICK</div>
+    <div class="grid-wrapper">
+      <div class="step-grid">
+        {#each stepIndices as i}
           <div
-            class="step kick"
-            class:active
-            class:current={$slaptStore.playbackState === "playing" &&
-              Math.floor((i / STEPS) * 4) === ((currentBar * 4) % 4)}
+            class="step"
+            class:active={kickSteps.has(i)}
+            class:beat-start={i % 4 === 0}
+            data-type="kick"
           />
         {/each}
       </div>
     </div>
+  </div>
 
-    <div class="row">
-      <span class="row-label">SNARE</span>
-      <div class="steps">
-        {#each snareSteps as active, i}
-          <div class="step snare" class:active />
+  <!-- Snare row -->
+  <div class="row">
+    <div class="row-label">SNARE</div>
+    <div class="grid-wrapper">
+      <div class="step-grid">
+        {#each stepIndices as i}
+          <div
+            class="step"
+            class:active={snareSteps.has(i)}
+            class:beat-start={i % 4 === 0}
+            data-type="snare"
+          />
         {/each}
       </div>
     </div>
+  </div>
 
-    <div class="row">
-      <span class="row-label">HIHAT</span>
-      <div class="steps">
-        {#each hihatSteps as active, i}
-          <div class="step hihat" class:active />
+  <!-- Hihat row -->
+  <div class="row">
+    <div class="row-label">HIHAT</div>
+    <div class="grid-wrapper">
+      <div class="step-grid">
+        {#each stepIndices as i}
+          <div
+            class="step"
+            class:active={hihatSteps.has(i)}
+            class:beat-start={i % 4 === 0}
+            data-type="hihat"
+          />
         {/each}
       </div>
     </div>
@@ -72,93 +117,83 @@
 
 <style>
   .timeline {
-    padding: 12px 16px;
-    background: var(--bg-panel);
-    border-top: 1px solid var(--border);
-  }
-
-  .timeline-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 10px;
-  }
-
-  .label {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--text-muted);
-    letter-spacing: 0.12em;
-  }
-
-  .beat-markers {
-    display: flex;
-    gap: 0;
-    width: calc(100% - 64px);
-    justify-content: space-around;
-  }
-
-  .beat-marker {
-    font-family: var(--font-mono);
-    font-size: 9px;
-    color: var(--text-muted);
-    letter-spacing: 0.05em;
-  }
-
-  .rows {
+    background: #1a1a1a;
+    padding: 10px 0 12px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
+    user-select: none;
   }
 
   .row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    height: 28px;
+  }
+
+  .header-row {
+    height: 20px;
+    margin-bottom: 2px;
   }
 
   .row-label {
-    font-family: var(--font-mono);
+    width: 60px;
+    min-width: 60px;
     font-size: 9px;
-    color: var(--text-muted);
-    width: 40px;
-    letter-spacing: 0.08em;
-    flex-shrink: 0;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: #555;
+    text-align: right;
+    padding-right: 10px;
   }
 
-  .steps {
-    display: flex;
-    gap: 3px;
+  /* FIX: grid-wrapper is position:relative so beat labels can overlay correctly */
+  .grid-wrapper {
     flex: 1;
+    position: relative;
+    height: 100%;
+  }
+
+  /* Beat labels absolutely positioned so they don't consume grid columns */
+  .beat-labels {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .beat-label {
+    position: absolute;
+    font-size: 9px;
+    color: #444;
+    transform: translateX(-50%);
+    top: 2px;
+  }
+
+  /* FIX: 16 exactly equal columns using grid - no flex quirks */
+  .step-grid {
+    display: grid;
+    grid-template-columns: repeat(16, 1fr);
+    gap: 2px;
+    height: 100%;
+    width: 100%;
   }
 
   .step {
-    flex: 1;
-    height: 22px;
     border-radius: 2px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    transition: all 0.1s ease;
-    position: relative;
+    background: #2a2a2a;
+    height: 100%;
+    transition: background 0.1s;
   }
 
-  .step.active.kick {
-    background: var(--accent-primary);
-    border-color: var(--accent-primary);
-    box-shadow: 0 0 6px rgba(200, 240, 96, 0.4);
+  /* FIX: beat-start steps get a slightly lighter background so bar grid is visible */
+  .step.beat-start {
+    background: #2f2f2f;
   }
 
-  .step.active.snare {
-    background: var(--accent-warm);
-    border-color: var(--accent-warm);
-    box-shadow: 0 0 6px rgba(240, 160, 96, 0.4);
-  }
-
-  .step.active.hihat {
-    background: var(--accent-cool);
-    border-color: var(--accent-cool);
-    box-shadow: 0 0 6px rgba(96, 200, 240, 0.3);
-    height: 12px;
-    margin-top: 5px;
-  }
+  .step.active[data-type="kick"]  { background: #b5f542; }
+  .step.active[data-type="snare"] { background: #f5a742; }
+  .step.active[data-type="hihat"] { background: #42d4f5; }
 </style>

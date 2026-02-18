@@ -3,6 +3,7 @@ import {
   buildEffectRack,
   buildSynthRack,
   applyDrumEffects,
+  resetEffectState,
   disposeEffectRack,
   disposeSynthRack,
 } from "./effects";
@@ -48,9 +49,16 @@ export async function playDrums(pattern: DrumPattern, tempo: number): Promise<vo
   await initAudio();
   Tone.getTransport().bpm.value = tempo;
 
+  // FIX: dispose old drum part before scheduling a new one
   parts.drum?.dispose();
+  parts.drum = null;
 
+  // FIX: reset bitcrush applied flag so re-pressing play doesn't skip routing
+  resetEffectState();
+
+  // Apply effects AFTER resetting state, BEFORE scheduling
   applyDrumEffects(synths!, fx!, pattern.effects);
+
   parts.drum = scheduleDrums(pattern, synths!);
 }
 
@@ -64,6 +72,7 @@ export async function playChords(
   Tone.getTransport().bpm.value = tempo;
 
   parts.chord?.dispose();
+  parts.chord = null;
   parts.chord = scheduleChords(progression, synths!);
 }
 
@@ -72,6 +81,7 @@ export async function playBass(progression: string[], _tempo: number): Promise<v
   await initAudio();
 
   parts.bass?.dispose();
+  parts.bass = null;
   parts.bass = scheduleBass(progression, synths!);
 }
 
@@ -79,8 +89,10 @@ export function startPlayback(): void {
   if (!isBrowser()) return;
   barCount = 0;
 
+  // FIX: always clear previous repeat before scheduling a new one
   if (barRepeatId !== null) {
     Tone.getTransport().clear(barRepeatId);
+    barRepeatId = null;
   }
 
   barRepeatId = Tone.getTransport().scheduleRepeat(() => {

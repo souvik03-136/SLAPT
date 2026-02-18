@@ -16,12 +16,12 @@ export interface SlaptWarning {
 
 const GENRE_BPM_RANGES: Record<string, [number, number]> = {
   "lofi-hiphop": [60, 90],
-  "boom-bap": [80, 100],
-  house: [120, 135],
-  techno: [130, 150],
-  dnb: [160, 180],
-  ambient: [60, 90],
-  trap: [130, 170],
+  "boom-bap":    [80, 100],
+  house:         [120, 135],
+  techno:        [130, 150],
+  dnb:           [160, 180],
+  ambient:       [60, 90],
+  trap:          [130, 170],
 };
 
 const SCALE_NOTES: Record<string, string[]> = {
@@ -29,9 +29,9 @@ const SCALE_NOTES: Record<string, string[]> = {
   Cm: ["C", "D", "Eb", "F", "G", "Ab", "Bb"],
   Dm: ["D", "E", "F", "G", "A", "Bb", "C"],
   Em: ["E", "F#", "G", "A", "B", "C", "D"],
-  C: ["C", "D", "E", "F", "G", "A", "B"],
-  G: ["G", "A", "B", "C", "D", "E", "F#"],
-  F: ["F", "G", "A", "Bb", "C", "D", "E"],
+  C:  ["C", "D", "E", "F", "G", "A", "B"],
+  G:  ["G", "A", "B", "C", "D", "E", "F#"],
+  F:  ["F", "G", "A", "Bb", "C", "D", "E"],
 };
 
 export function validateTempo(bpm: number, genre?: string): SlaptWarning | null {
@@ -43,7 +43,8 @@ export function validateTempo(bpm: number, genre?: string): SlaptWarning | null 
       code: "TEMPO_GENRE_MISMATCH",
       message: `${bpm} BPM feels off for ${genre}`,
       suggestions: [
-        `Typical ${genre} range: ${min}–${max} BPM`,
+        // FIX: was "60â€"90" (mojibake for em-dash) - now plain ASCII hyphen
+        `Typical ${genre} range: ${min}-${max} BPM`,
         `Try ${Math.round((min + max) / 2)} BPM for a classic ${genre} feel`,
         `Or switch genre to match your tempo`,
       ],
@@ -71,7 +72,8 @@ export function validateNoteInScale(note: string, key: string): SlaptWarning | n
   const scale = SCALE_NOTES[key];
   if (!scale) return null;
 
-  const normalizedNote = note.replace("♮", "").trim();
+  // FIX: was "â™®" (mojibake for natural sign ♮) - use plain "n" suffix convention instead
+  const normalizedNote = note.replace(/n$/, "").trim();
   if (!scale.includes(normalizedNote)) {
     return {
       code: "NOTE_OUT_OF_SCALE",
@@ -79,7 +81,8 @@ export function validateNoteInScale(note: string, key: string): SlaptWarning | n
       suggestions: [
         `${key} scale: ${scale.join(", ")}`,
         `Closest in-scale note: ${findClosestNote(normalizedNote, scale)}`,
-        `Using out-of-scale notes creates dissonance — intentional?`,
+        // FIX: was "dissonance â€" intentional?" - plain ASCII dash
+        `Using out-of-scale notes creates dissonance - intentional?`,
       ],
     };
   }
@@ -97,7 +100,10 @@ function findClosestNote(note: string, scale: string[]): string {
   for (const scaleNote of scale) {
     const scaleIdx = chromatic.indexOf(scaleNote.replace("b", "#"));
     if (scaleIdx === -1) continue;
-    const dist = Math.min(Math.abs(noteIdx - scaleIdx), 12 - Math.abs(noteIdx - scaleIdx));
+    const dist = Math.min(
+      Math.abs(noteIdx - scaleIdx),
+      12 - Math.abs(noteIdx - scaleIdx)
+    );
     if (dist < minDist) {
       minDist = dist;
       closest = scaleNote;

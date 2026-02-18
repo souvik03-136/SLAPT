@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
-  import { slaptStore, isPlaying } from "../stores/slapt";
+  import { slaptStore, isPlaying } from "$lib/stores/slapt";
   import {
     initAudio,
     playDrums,
@@ -10,108 +9,92 @@
     stopPlayback,
     pausePlayback,
     setBarChangeCallback,
-    cleanup,
-  } from "../audio/engine";
+    setTempo,
+  } from "$lib/audio/engine";
 
-  onDestroy(cleanup);
+  $: program = $slaptStore.parseResult?.program;
+  $: tempo   = $slaptStore.tempo ?? 75;
+  $: genre   = $slaptStore.genre ?? "";
+  $: bars    = $slaptStore.currentBar ?? 0;
 
   setBarChangeCallback((bar) => slaptStore.setCurrentBar(bar));
 
   async function handlePlay() {
-    const { parseResult } = $slaptStore;
-    if (!parseResult?.success) return;
-
-    const program = parseResult.program;
-    if (!program) return;
-
     await initAudio();
 
-    const tempo = program.tempo ?? 75;
+    const drums = program?.drums;
+    const chords = program?.chords;
+    const bass = program?.bass;
 
-    // Drums from parsed program
-    if (program.drums) {
-      const { kick, snare, hihat, swing, effects } = program.drums;
-
-      // Apply groovy/dusty modifiers
-      const isGroovy = program.modifiers.includes("groovy");
-      const isDusty = program.modifiers.includes("dusty");
-
+    // FIX: never inject default kick/snare - respect exactly what the user wrote.
+    // If they wrote no snare line, snare should be [] (silent). Same for kick.
+    if (drums) {
       await playDrums(
         {
-          kick: kick.length ? kick : [1, 3],
-          snare: snare.length ? snare : [2, 4],
-          hihat: { count: hihat.count ?? 8, type: "closed" },
-          swing: swing ?? (isGroovy ? 60 : 0),
-          effects: isDusty && !effects.includes("bitcrush")
-            ? [...effects, "bitcrush"]
-            : effects,
+          kick:    drums.kick    ?? [],
+          snare:   drums.snare   ?? [],
+          hihat:   drums.hihat   ?? { count: 0, type: "closed" },
+          swing:   drums.swing   ?? 0,
+          effects: drums.effects ?? [],
         },
         tempo
       );
     }
 
-    // Chords and bass from parsed program
-    if (program.chords?.progression?.length) {
-      await playChords(program.chords.progression, program.chords.instrument, tempo);
-      await playBass(program.chords.progression, tempo);
+    if (chords?.progression?.length) {
+      await playChords(chords.progression, chords.instrument ?? "piano", tempo);
+    }
+
+    if (bass) {
+      await playBass(chords?.progression ?? [], tempo);
     }
 
     startPlayback();
     slaptStore.setPlaybackState("playing");
-    slaptStore.setTempo(tempo);
   }
 
-  function handlePause() {
+  async function handlePause() {
     pausePlayback();
     slaptStore.setPlaybackState("paused");
   }
 
-  function handleStop() {
+  async function handleStop() {
     stopPlayback();
-    slaptStore.setPlaybackState("stopped");
     slaptStore.setCurrentBar(0);
+    slaptStore.setPlaybackState("stopped");
+  }
+
+  function handleTempoChange(e: Event) {
+    const val = parseFloat((e.target as HTMLInputElement).value);
+    if (!isNaN(val) && val > 0) {
+      slaptStore.setTempo(val);
+      setTempo(val);
+    }
   }
 </script>
 
 <div class="controls">
-  <div class="transport">
+  <div class="left">
     {#if $isPlaying}
-      <button class="control-btn pause" on:click={handlePause} title="Pause">
-        <svg viewBox="0 0 24 24" fill="currentColor">
-          <rect x="6" y="4" width="4" height="16" />
-          <rect x="14" y="4" width="4" height="16" />
-        </svg>
+      <button class="ctrl-btn pause" on:click={handlePause} title="Pause">
+        <span class="icon">⏸</span>
       </button>
     {:else}
-      <button
-        class="control-btn play"
-        on:click={handlePlay}
-        disabled={!$slaptStore.parseResult?.success}
-        title="Play"
-      >
-        <svg viewBox="0 0 24 24" fill="currentColor">
-          <polygon points="5,3 19,12 5,21" />
-        </svg>
+      <button class="ctrl-btn play" on:click={handlePlay} title="Play">
+        <span class="icon">▶</span>
       </button>
     {/if}
-
-    <button class="control-btn stop" on:click={handleStop} title="Stop">
-      <svg viewBox="0 0 24 24" fill="currentColor">
-        <rect x="4" y="4" width="16" height="16" />
-      </svg>
+    <button class="ctrl-btn stop" on:click={handleStop} title="Stop">
+      <span class="icon">■</span>
     </button>
   </div>
 
   <div class="info">
-    <span class="tempo-display">
-      {$slaptStore.tempo} <span class="unit">BPM</span>
-    </span>
-    <span class="bar-display">
-      BAR <span class="bar-number">{$slaptStore.currentBar}</span>
-    </span>
-    <span class="genre-badge">
-      {$slaptStore.genre}
-    </span>
+    <span class="bpm">{tempo} <span class="label">BPM</span></span>
+    <span class="bar">BAR <strong>{bars}</strong></span>
+    {#if genre}
+      <span class="genre-badge">{genre.toUpperCase()}</span>
+    {/if}
   </div>
 </div>
 
@@ -119,98 +102,44 @@
   .controls {
     display: flex;
     align-items: center;
-    gap: 24px;
-    padding: 0 20px;
-    height: 100%;
+    gap: 16px;
+    padding: 0 12px;
   }
-
-  .transport {
+  .left {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    gap: 6px;
   }
-
-  .control-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.15s ease;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    color: var(--text-secondary);
+  .ctrl-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #ccc;
+    transition: background 0.15s;
   }
-
-  .control-btn:hover:not(:disabled) {
-    border-color: var(--accent-primary);
-    color: var(--accent-primary);
-    box-shadow: 0 0 12px rgba(200, 240, 96, 0.2);
-  }
-
-  .control-btn:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-  }
-
-  .control-btn svg {
-    width: 14px;
-    height: 14px;
-  }
-
-  .control-btn.play {
-    background: var(--accent-primary);
-    border-color: var(--accent-primary);
-    color: var(--bg-deep);
-    box-shadow: 0 0 16px rgba(200, 240, 96, 0.3);
-  }
-
-  .control-btn.play:hover:not(:disabled) {
-    box-shadow: 0 0 24px rgba(200, 240, 96, 0.5);
-    color: var(--bg-deep);
-  }
-
+  .ctrl-btn:hover { background: rgba(255,255,255,0.08); }
+  .ctrl-btn.play  { color: #b5f542; }
+  .ctrl-btn.pause { color: #f5d742; }
+  .ctrl-btn.stop  { color: #f57242; }
   .info {
     display: flex;
     align-items: center;
-    gap: 16px;
-  }
-
-  .tempo-display {
-    font-family: var(--font-mono);
+    gap: 12px;
     font-size: 13px;
-    color: var(--text-primary);
-    font-weight: 700;
+    color: #aaa;
   }
-
-  .unit {
-    font-size: 10px;
-    color: var(--text-muted);
-    font-weight: 400;
-  }
-
-  .bar-display {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    color: var(--text-muted);
-    letter-spacing: 0.08em;
-  }
-
-  .bar-number {
-    color: var(--accent-cool);
-    font-weight: 700;
-  }
-
+  .bpm { color: #fff; font-weight: 600; }
+  .label { font-size: 10px; color: #888; margin-left: 2px; }
+  .bar strong { color: #b5f542; }
   .genre-badge {
-    font-family: var(--font-mono);
+    background: #b5f542;
+    color: #111;
     font-size: 10px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    color: var(--accent-warm);
-    padding: 3px 8px;
+    font-weight: 700;
+    padding: 2px 7px;
     border-radius: 3px;
     letter-spacing: 0.05em;
-    text-transform: uppercase;
   }
 </style>

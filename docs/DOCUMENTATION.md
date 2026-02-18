@@ -6,8 +6,8 @@ SLAPT runs as three Docker services orchestrated via `docker-compose.yml`:
 
 ```
 nginx (:80)
-  ├── /api/parse  →  parser (:3001)   [Node.js + TypeScript + Chevrotain]
-  └── /           →  web    (:3000)   [SvelteKit + Tone.js + CodeMirror 6]
+  |-- /api/parse  ->  parser (:3001)   [Node.js + TypeScript + Chevrotain]
+  `-- /           ->  web    (:3000)   [SvelteKit + Tone.js + CodeMirror 6]
 ```
 
 The parser is a stateless REST service. The web frontend does all audio synthesis client-side using the Web Audio API via Tone.js.
@@ -25,12 +25,12 @@ Open `http://localhost`. No other setup required.
 For iterative development without Docker:
 
 ```bash
-# Terminal 1 — parser
+# Terminal 1 - parser
 cd services/parser
 npm install
 npm run dev
 
-# Terminal 2 — web
+# Terminal 2 - web
 cd services/web
 npm install
 npm run dev
@@ -68,7 +68,7 @@ Web runs on `:3000`, parser on `:3001`. The web service proxies `/api/parse` to 
     {
       "code": "TEMPO_GENRE_MISMATCH",
       "message": "180 BPM feels off for lofi-hiphop",
-      "suggestions": ["Typical lofi-hiphop range: 60–90 BPM"]
+      "suggestions": ["Typical lofi-hiphop range: 60-90 BPM"]
     }
   ],
   "success": true
@@ -77,7 +77,7 @@ Web runs on `:3000`, parser on `:3001`. The web service proxies `/api/parse` to 
 
 `success` is `true` when `errors` is empty. Warnings do not affect `success`.
 
-**Health check:** `GET /health` → `{ "status": "ok", "service": "slapt-parser" }`
+**Health check:** `GET /health` -> `{ "status": "ok", "service": "slapt-parser" }`
 
 ---
 
@@ -89,13 +89,13 @@ Fires a warning when your `@tempo` is outside the genre's typical range.
 
 | Genre | BPM Range |
 |---|---|
-| lofi-hiphop | 60–90 |
-| boom-bap | 80–100 |
-| house | 120–135 |
-| techno | 130–150 |
-| dnb | 160–180 |
-| ambient | 60–90 |
-| trap | 130–170 |
+| lofi-hiphop | 60-90 |
+| boom-bap | 80-100 |
+| house | 120-135 |
+| techno | 130-150 |
+| dnb | 160-180 |
+| ambient | 60-90 |
+| trap | 130-170 |
 
 ### Beat Out of Range
 
@@ -103,7 +103,7 @@ Fires an error when a beat number exceeds the time signature (default 4/4).
 
 ```
 kick on 5
-→ Error: BEAT_OUT_OF_RANGE
+-> Error: BEAT_OUT_OF_RANGE
 ```
 
 ### Note Out of Scale
@@ -142,7 +142,8 @@ drums with swing(60%):
 ```
 
 - `kick pattern [...]` accepts any decimal beat positions.
-- `kick on X and Y` is shorthand for two beats.
+- `kick on X and Y` is shorthand for two or more beats: `kick on 1 and 3 and 4` is valid.
+- `snare on X and Y` works the same way. If you write no `snare` line, no snare plays.
 - `hihat N times` divides the bar into N equal hits.
 - `swing(N%)` shifts every other 8th note by N%.
 
@@ -150,14 +151,14 @@ drums with swing(60%):
 
 ```
 chords using rhodes piano:
-  progression Am7 → Fmaj7 → Dm7 → E7
+  progression Am7 -> Fmaj7 -> Dm7 -> E7
   voicing spread
   rhythm whole notes with slight anticipation
   reverb(medium, dreamy)
   tremolo(gentle, 4Hz)
 ```
 
-`→` separates chords in the progression. Each chord occupies one bar.
+`->` separates chords in the progression. Each chord occupies one bar.
 
 Built-in chord voicings: `Am7`, `Fmaj7`, `Dm7`, `E7`, `Cmaj7`, `Gmaj7`, `Am`, `Dm`, `Em`.
 
@@ -205,10 +206,10 @@ section outro:
 Applied after all blocks. Each modifier adjusts the interpretation of what was declared above it.
 
 ```
-make it groovy      → swing 60%, humanization, ghost notes
-make it dusty       → bitcrush, vinyl crackle, rolled-off highs
-add some laziness   → swing 40%, pushed-back timing
-bring energy up     → increased velocity, fills every 4 bars
+make it groovy      -> swing 60%, humanization, ghost notes
+make it dusty       -> bitcrush, vinyl crackle, rolled-off highs
+add some laziness   -> swing 40%, pushed-back timing
+bring energy up     -> increased velocity, fills every 4 bars
 ```
 
 ---
@@ -220,22 +221,25 @@ The engine lives entirely in `services/web/src/lib/audio/engine.ts` and uses Ton
 ### Synth Routing
 
 ```
-kickSynth    → Compressor → Destination
-snareSynth   → Filter → Compressor → Destination
-hihatSynth   → Destination
-chordSynth   → Tremolo → Reverb → Destination
-bassSynth    → LowpassFilter → Destination
+kickSynth    -> kickCompressor  -> Destination
+snareSynth   -> snareFilter -> snareCompressor -> Destination
+hihatSynth   -> Destination
+chordSynth   -> Tremolo -> Reverb -> Destination
+bassSynth    -> LowpassFilter   -> Destination
 ```
+
+Note: kick and snare have **separate** compressors so they never bleed into each other.
+When bitcrush is applied, each instrument gets its **own** BitCrusher instance.
 
 ### Playback Flow
 
-1. `initAudio()` — creates all synths and effects, must be called after a user gesture
-2. `playDrums(pattern, tempo)` — builds a `Tone.Part` for kick/snare/hihat
-3. `playChords(progression, instrument, tempo)` — builds a `Tone.Part` for chords
-4. `playBass(progression, tempo)` — builds a `Tone.Part` for bass roots
-5. `startPlayback()` — starts `Tone.Transport` and all parts simultaneously
-6. `stopPlayback()` — stops transport and cancels all scheduled events
-7. `cleanup()` — disposes all Tone nodes, call on component destroy
+1. `initAudio()` - creates all synths and effects, must be called after a user gesture
+2. `playDrums(pattern, tempo)` - builds a `Tone.Part` for kick/snare/hihat
+3. `playChords(progression, instrument, tempo)` - builds a `Tone.Part` for chords
+4. `playBass(progression, tempo)` - builds a `Tone.Part` for bass roots
+5. `startPlayback()` - starts `Tone.Transport` and all parts simultaneously
+6. `stopPlayback()` - stops transport and cancels all scheduled events
+7. `cleanup()` - disposes all Tone nodes, call on component destroy
 
 ### Bar Tracking
 
@@ -269,8 +273,8 @@ Derived stores: `hasErrors`, `hasWarnings`, `isPlaying`.
 | Component | Responsibility |
 |---|---|
 | `Editor.svelte` | CodeMirror 6 instance, debounced parse on change |
-| `Controls.svelte` | Play/pause/stop, extracts pattern from code, calls engine |
-| `Timeline.svelte` | 16-step grid visualization of kick/snare/hihat |
+| `Controls.svelte` | Play/pause/stop, passes exact parsed pattern to engine (no defaults injected) |
+| `Timeline.svelte` | 16-step grid - beat labels are overlaid so columns stay equal width |
 | `ErrorPanel.svelte` | Renders errors and warnings with suggestions |
 
 Parse is debounced at **400ms** after the last keystroke.
