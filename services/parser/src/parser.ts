@@ -162,26 +162,44 @@ class SlaptParser extends CstParser {
     this.SUBRULE(this.velocityRange);
   });
 
+  // FIX 1: drumEffect apply branch now also accepts keyword tokens
+  // (like Compress, Filter, Reverb, etc.) in addition to plain Identifiers.
+  // FIX 2: compress branch now accepts an optional Identifier OR keyword
+  // modifier so "apply compress(heavy)" and "compress heavily" both parse.
   drumEffect = this.RULE("drumEffect", () => {
     this.OR([
       {
         ALT: () => {
           this.CONSUME(T.Apply);
-          this.CONSUME(T.Identifier);
+          // Accept any known keyword that could follow "apply" (e.g. compress,
+          // bitcrush written as an identifier, reverb, etc.) as well as plain
+          // Identifiers.  We try keyword tokens first then fall back.
+          this.OR2([
+            { ALT: () => this.CONSUME(T.Compress) },
+            { ALT: () => this.CONSUME(T.Reverb) },
+            { ALT: () => this.CONSUME(T.Identifier) },
+          ]);
           this.OPTION(() => {
             this.CONSUME(T.LParen);
+            // params: optional number and/or identifier-like token
             this.OPTION2(() => this.CONSUME(T.NumberLiteral));
-            this.OPTION3(() => this.CONSUME2(T.Identifier));
+            this.OPTION3(() => {
+              this.OR3([
+                { ALT: () => this.CONSUME2(T.Identifier) },
+                { ALT: () => this.CONSUME(T.Heavily) },
+                { ALT: () => this.CONSUME(T.Subtle) },
+              ]);
+            });
             this.CONSUME(T.RParen);
           });
         },
       },
       {
         ALT: () => {
-          this.CONSUME(T.Compress);
+          this.CONSUME2(T.Compress);
           this.OPTION4(() => {
-            this.OR2([
-              { ALT: () => this.CONSUME(T.Heavily) },
+            this.OR4([
+              { ALT: () => this.CONSUME2(T.Heavily) },
               {
                 ALT: () => {
                   this.CONSUME(T.With);
@@ -338,6 +356,8 @@ class SlaptParser extends CstParser {
     this.MANY(() => this.SUBRULE(this.atmosphereStatement));
   });
 
+  // FIX 3: tape wobble line now accepts Subtle keyword token in addition to
+  // a plain Identifier, so "tape wobble subtle" parses correctly.
   atmosphereStatement = this.RULE("atmosphereStatement", () => {
     this.OR([
       {
@@ -363,7 +383,11 @@ class SlaptParser extends CstParser {
         ALT: () => {
           this.CONSUME(T.Tape);
           this.CONSUME(T.Wobble);
-          this.CONSUME2(T.Identifier);
+          // Accept either a plain identifier OR the keyword "subtle"
+          this.OR2([
+            { ALT: () => this.CONSUME2(T.Identifier) },
+            { ALT: () => this.CONSUME(T.Subtle) },
+          ]);
         },
       },
     ]);
