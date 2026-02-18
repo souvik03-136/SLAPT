@@ -29,6 +29,7 @@
           ".cm-scroller": {
             fontFamily: "var(--font-mono)",
             lineHeight: "1.7",
+            overflow: "auto !important",
           },
           ".cm-content": {
             padding: "16px 0",
@@ -105,9 +106,11 @@
   .editor-wrapper {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     background: var(--bg-surface);
     border-right: 1px solid var(--border);
+    overflow: hidden;
   }
 
   .editor-header {
@@ -150,7 +153,8 @@
 
   .editor-container {
     flex: 1;
-    overflow: hidden;
+    overflow: auto;
+    min-height: 0;
   }
 
   @keyframes pulse {

@@ -63,7 +63,6 @@
   .error-panel {
     background: var(--bg-panel);
     border-top: 1px solid var(--border);
-    max-height: 160px;
     overflow-y: auto;
     padding: 8px 16px;
     display: flex;

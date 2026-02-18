@@ -5,6 +5,33 @@
   import ErrorPanel from "$lib/components/ErrorPanel.svelte";
   import { slaptStore } from "$lib/stores/slapt";
 
+  let bottomPanels: HTMLDivElement;
+  let isDragging = false;
+  let startY = 0;
+  let startHeight = 0;
+
+  function startResize(e: MouseEvent) {
+    isDragging = true;
+    startY = e.clientY;
+    startHeight = bottomPanels.offsetHeight;
+
+    const onMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      const delta = startY - e.clientY;
+      const newHeight = Math.min(Math.max(startHeight + delta, 80), window.innerHeight * 0.6);
+      bottomPanels.style.height = newHeight + 'px';
+    };
+
+    const onUp = () => {
+      isDragging = false;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+
   function applyGenre(g: string) {
     const current = $slaptStore.code;
     const updated = current.replace(/@genre\s+\S+/, `@genre ${g}`);
@@ -70,8 +97,13 @@
 
     <main class="editor-area">
       <Editor />
-      <ErrorPanel />
-      <Timeline />
+      <div class="resize-handle" class:dragging={isDragging} on:mousedown={startResize} />
+      <div class="bottom-panels" bind:this={bottomPanels}>
+        <div class="bottom-content">
+          <ErrorPanel />
+          <Timeline />
+        </div>
+      </div>
     </main>
   </div>
 </div>
@@ -158,6 +190,7 @@
     display: flex;
     flex: 1;
     overflow: hidden;
+    min-height: 0;
   }
 
   .sidebar {
@@ -239,5 +272,51 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-height: 0;
+    min-width: 0;
+  }
+
+  /* Resizable bottom panel */
+  .bottom-panels {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    min-height: 80px;
+    max-height: 60vh;
+    height: 220px;
+    overflow: hidden;
+  }
+
+  .resize-handle {
+    height: 5px;
+    background: var(--border);
+    cursor: ns-resize;
+    flex-shrink: 0;
+    transition: background 0.15s ease;
+    position: relative;
+  }
+
+  .resize-handle:hover,
+  .resize-handle.dragging {
+    background: var(--accent-primary);
+  }
+
+  .resize-handle::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 32px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--text-muted);
+    opacity: 0.5;
+  }
+
+  .bottom-content {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
   }
 </style>
