@@ -1,0 +1,43 @@
+services:
+  nginx:
+    image: ghcr.io/souvik03-136/slapt-nginx:latest
+    ports:
+      - "${NGINX_PORT:-80}:80"
+    depends_on:
+      parser:
+        condition: service_healthy
+      web:
+        condition: service_started
+    networks:
+      - slapt-net
+
+  web:
+    image: ghcr.io/souvik03-136/slapt-web:latest
+    environment:
+      - PARSER_URL=http://parser:3001
+      - NODE_ENV=production
+    networks:
+      - slapt-net
+    depends_on:
+      parser:
+        condition: service_healthy
+
+  parser:
+    image: ghcr.io/souvik03-136/slapt-parser:latest
+    ports:
+      - "${PARSER_PORT:-3001}:3001"
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+    networks:
+      - slapt-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+networks:
+  slapt-net:
+    driver: bridge

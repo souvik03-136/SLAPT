@@ -7,14 +7,69 @@ on:
 
 jobs:
   release:
-    name: Create Release
+    name: Build & Release
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      packages: write
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      # ── Docker ──────────────────────────────────────────────────────────────
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push parser
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/parser
+          push: true
+          tags: |
+            ghcr.io/souvik03-136/slapt-parser:${{ github.ref_name }}
+            ghcr.io/souvik03-136/slapt-parser:latest
+
+      - name: Build and push web
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/web
+          push: true
+          tags: |
+            ghcr.io/souvik03-136/slapt-web:${{ github.ref_name }}
+            ghcr.io/souvik03-136/slapt-web:latest
+
+      - name: Build and push nginx
+        uses: docker/build-push-action@v5
+        with:
+          context: ./nginx
+          push: true
+          tags: |
+            ghcr.io/souvik03-136/slapt-nginx:${{ github.ref_name }}
+            ghcr.io/souvik03-136/slapt-nginx:latest
+
+      # ── Release zip ─────────────────────────────────────────────────────────
+
+      - name: Package release zip
+        run: |
+          mkdir slapt-${{ github.ref_name }}
+          cp docker-compose.release.yml slapt-${{ github.ref_name }}/docker-compose.release.yml
+          cp .env                        slapt-${{ github.ref_name }}/.env
+          cp start.bat stop.bat          slapt-${{ github.ref_name }}/
+          cp start.sh  stop.sh           slapt-${{ github.ref_name }}/
+          chmod +x slapt-${{ github.ref_name }}/start.sh slapt-${{ github.ref_name }}/stop.sh
+          zip -r slapt-${{ github.ref_name }}.zip slapt-${{ github.ref_name }}/
+
+      # ── Changelog ───────────────────────────────────────────────────────────
 
       - name: Generate changelog
         id: changelog
@@ -28,7 +83,20 @@ jobs:
             RANGE="$PREV_TAG..HEAD"
           fi
 
-          echo "## What's Changed" > changelog.md
+          echo "## Install" > changelog.md
+          echo "" >> changelog.md
+          echo "**Requires:** [Docker Desktop](https://www.docker.com/products/docker-desktop/)" >> changelog.md
+          echo "" >> changelog.md
+          echo "1. Download \`slapt-${CURR_TAG}.zip\` below" >> changelog.md
+          echo "2. Unzip it anywhere" >> changelog.md
+          echo "3. **Windows:** double-click \`start.bat\`  |  **Mac/Linux:** run \`./start.sh\`" >> changelog.md
+          echo "4. Browser opens at http://localhost" >> changelog.md
+          echo "" >> changelog.md
+          echo "To stop: double-click \`stop.bat\` or run \`./stop.sh\`" >> changelog.md
+          echo "" >> changelog.md
+          echo "---" >> changelog.md
+          echo "" >> changelog.md
+          echo "## What's Changed" >> changelog.md
           echo "" >> changelog.md
 
           ADDS=$(git log $RANGE --pretty=format:"- %s (%h)" --grep="^add" 2>/dev/null)
@@ -74,14 +142,16 @@ jobs:
             echo "" >> changelog.md
           fi
 
-          echo "" >> changelog.md
           echo "**Full diff:** https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${CURR_TAG}" >> changelog.md
 
           cat changelog.md
+
+      # ── GitHub Release ───────────────────────────────────────────────────────
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           body_path: changelog.md
+          files: slapt-${{ github.ref_name }}.zip
           draft: false
           prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') || contains(github.ref, '-rc') }}
