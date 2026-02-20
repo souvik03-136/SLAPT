@@ -1,10 +1,24 @@
-# SLAPT
+<p align="center">
+  <img src="images/slapt.png" alt="SLAPT Logo" width="600"/>
+</p>
+
+<h1 align="center">SLAPT</h1>
+<p align="center"><em><strong>S</strong>ounds <strong>L</strong>ike <strong>A</strong> <strong>P</strong>erfect <strong>T</strong>rack</em><br/>
+<sub><em>(or Sonic Language Audio Programming Tool if ur parents are asking)</em></sub></p>
+
+<p align="center">
+  <a href="https://github.com/souvik03-136/slapt/releases"><img src="https://img.shields.io/github/v/release/souvik03-136/slapt?style=flat-square&color=blueviolet" alt="Latest Release"/></a>
+  <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License"/>
+  <img src="https://img.shields.io/badge/requires-Docker-2496ED?style=flat-square&logo=docker" alt="Docker"/>
+</p>
+
+---
 
 > **Is your code slapping? Because mine is.**
 
 ## What if making music felt like texting your bestie?
 
-You know that feeling when a beat just *hits different*? When the bass drops and everything clicks? That's what coding music should feel like. But instead, you see this:
+You know that feeling when a beat just *hits different*? When the bass drops and everything clicks? That's what coding music should feel like. But instead, you're staring at this:
 
 ```javascript
 // Other tools be like:
@@ -16,10 +30,7 @@ Meanwhile us: *"bro what?"*
 
 ## Welcome to SLAPT
 
-**SLAPT** = **S**ounds **L**ike **A** **P**erfect **T**rack
-*(or Sonic Language Audio Programming Tool if ur parents are asking)*
-
-Said "nah" to cryptic symbols and made music programming that actually makes sense:
+We said "nah" to cryptic symbols and built music programming that actually makes sense:
 
 ```
 play kick every beat
@@ -33,7 +44,7 @@ Read that. You understood it immediately. That's the whole point.
 
 ## Download & Run (No Setup)
 
-**Requires:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running. That's the only dependency.
+**Requires:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running. That's literally the only dependency.
 
 ### Step 1 — Download the latest release
 
@@ -279,19 +290,19 @@ section outro:
 make it dusty
 ```
 
-Note: chord progressions use `->` (two characters you can type on any keyboard).
+> Note: chord progressions use `->` (two characters you can type on any keyboard).
 
 ---
 
 ## The SLAPT Philosophy
 
-**Write Music Like You Feel It** - If you can describe it, you can code it.
+**Write Music Like You Feel It** — If you can describe it, you can code it.
 
-**Mistakes Are Features** - In lofi, imperfection is the aesthetic. Your "mistakes" might be the best part.
+**Mistakes Are Features** — In lofi, imperfection is the aesthetic. Your "mistakes" might be the best part.
 
-**No Gatekeeping** - Free, approachable, welcomes everyone.
+**No Gatekeeping** — Free, approachable, welcomes everyone.
 
-**Progressive Complexity** - Start simple. Add layers as you learn. Never hit a wall.
+**Progressive Complexity** — Start simple. Add layers as you learn. Never hit a wall.
 
 ---
 
@@ -335,9 +346,23 @@ Check out [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ---
 
+## Quick Links
+
+- [Releases](https://github.com/souvik03-136/slapt/releases) — download the latest version
+- [Documentation](./docs/DOCUMENTATION.md) — architecture, language reference, API
+- [Tutorials](./docs/TUTORIALS.md) — 10 step-by-step guides from first beat to full arrangement
+- [Task Commands](./TASKS.md) — all `task` commands for Docker, dev, tests, build, and cleanup
+- [Tests](./tests) — lexer, error validation, and API integration tests
+- [Contributing](./CONTRIBUTING.md) — how to report bugs, add genres, submit PRs
+- [Security](./SECURITY.md) — how to report vulnerabilities
+- [Report Issues](https://github.com/souvik03-136/slapt/issues)
+- [Feature Requests](https://github.com/souvik03-136/slapt/discussions)
+
+---
+
 ## License
 
-MIT - Do whatever you want. Make money. Don't make money. Just make music.
+MIT — Do whatever you want. Make money. Don't make money. Just make music.
 
 ---
 
@@ -348,20 +373,29 @@ J Dilla and Nujabes for the whole lofi aesthetic.
 
 ---
 
-## Quick Links
+## Contributors
 
-- [Releases](https://github.com/souvik03-136/slapt/releases) - download the latest version
-- [Documentation](./docs/DOCUMENTATION.md) - architecture, language reference, API
-- [Tutorials](./docs/TUTORIALS.md) - 10 step-by-step guides from first beat to full arrangement
-- [Task Commands](./TASKS.md) - all `task` commands for Docker, dev, tests, build, and cleanup
-- [Tests](./tests) - lexer, error validation, and API integration tests
-- [Contributing](./CONTRIBUTING.md) - how to report bugs, add genres, submit PRs
-- [Security](./SECURITY.md) - how to report vulnerabilities
-- [Report Issues](https://github.com/souvik03-136/slapt/issues)
-- [Feature Requests](https://github.com/souvik03-136/slapt/discussions)
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/souvik03-136">
+        <img src="https://avatars.githubusercontent.com/souvik03-136" width="100px;" alt="Souvik Mahanta"/>
+        <br />
+        <sub><b>Souvik Mahanta</b></sub>
+      </a>
+      <br />
+      <a href="https://www.linkedin.com/in/souvik-mahanta" title="LinkedIn">🔗</a>
+      <a href="https://github.com/souvik03-136" title="GitHub">🐙</a>
+    </td>
+  </tr>
+</table>
 
 ---
 
-*"Finally, a music programming language that doesn't make me want to uninstall everything."*
+<p align="center">
+  <img src="images/slapt.png" alt="SLAPT" width="400"/>
+</p>
 
-*Built different. Sounds different. Is different.*
+<p align="center"><em>"Finally, a music programming language that doesn't make me want to uninstall everything."</em></p>
+
+<p align="center"><strong>Built different. Sounds different. Is different.</strong></p>
