@@ -65,7 +65,7 @@ tasks:
     cmds:
       - docker compose ps
 
-  # ── Dev (no Docker) ────────────────────────────────────────────────────────
+  # ── Dev (no Docker) ───────────────────────────────────────────────────────
 
   dev:parser:
     desc: Run parser in dev mode (hot reload)
@@ -79,7 +79,7 @@ tasks:
     cmds:
       - npm run dev
 
-  # ── Install ────────────────────────────────────────────────────────────────
+  # ── Install ───────────────────────────────────────────────────────────────
 
   install:
     desc: Install dependencies for all services and tests
@@ -106,7 +106,7 @@ tasks:
     cmds:
       - npm install
 
-  # ── Build ──────────────────────────────────────────────────────────────────
+  # ── Build ─────────────────────────────────────────────────────────────────
 
   build:
     desc: Build both services for production
@@ -126,10 +126,10 @@ tasks:
     cmds:
       - npm run build
 
-  # ── Tests ──────────────────────────────────────────────────────────────────
+  # ── Tests ─────────────────────────────────────────────────────────────────
 
   test:
-    desc: Run all tests (parser must be running — use task test:full for auto-start)
+    desc: Run all tests (parser must be running – use task test:full for auto-start)
     dir: '{{.TESTS_DIR}}'
     cmds:
       - npm test
@@ -161,11 +161,37 @@ tasks:
   test:full:
     desc: Start parser in Docker then run all tests, then stop
     cmds:
-      - docker compose up -d parser
+      - docker compose up -d --build parser
       - defer: docker compose stop parser
-      - node -e "const s=Date.now();while(Date.now()-s<3000){}"
+      - node -e "
+          const http = require('http');
+          const MAX = 30;
+          let attempts = 0;
+          function check() {
+            attempts++;
+            const req = http.get('http://localhost:3001/health', (res) => {
+              if (res.statusCode === 200) {
+                console.log('Parser is healthy after ' + attempts + ' attempt(s)');
+                process.exit(0);
+              } else {
+                retry();
+              }
+            });
+            req.on('error', retry);
+            req.end();
+          }
+          function retry() {
+            if (attempts >= MAX) {
+              console.error('Parser failed to become healthy after ' + MAX + ' attempts');
+              process.exit(1);
+            }
+            setTimeout(check, 1000);
+          }
+          check();
+        "
       - task: test
-  # ── Type checking ──────────────────────────────────────────────────────────
+
+  # ── Type checking ─────────────────────────────────────────────────────────
 
   check:
     desc: Type-check both services
@@ -185,41 +211,39 @@ tasks:
     cmds:
       - npm run check
 
-  # ── Health ─────────────────────────────────────────────────────────────────
+  # ── Health ────────────────────────────────────────────────────────────────
 
   health:
-    desc: Check parser health endpoint
-    preconditions:
-      - sh: docker compose ps parser | grep -q running
-        msg: "Parser is not running. Start it with: task run:d"
+    desc: POST a test payload to the parse endpoint (via nginx)
     cmds:
-      - curl -s http://localhost/api/parse -X POST -H "Content-Type:application/json" -d '{"code":"@genre lofi-hiphop"}' | cat
+      - |
+        node -e "const http=require('http');const body=JSON.stringify({code:'@genre lofi-hiphop'});const req=http.request({hostname:'localhost',port:80,path:'/api/parse',method:'POST',headers:{'Content-Type':'application/json','Content-Length':Buffer.byteLength(body)}},(res)=>{let d='';res.on('data',(c)=>d+=c);res.on('end',()=>console.log(d));});req.on('error',(e)=>{console.error('Request failed:',e.message);process.exit(1);});req.write(body);req.end();"
 
   health:parser:
-    desc: Hit the parser /health endpoint directly
+    desc: Hit the parser /health endpoint directly (parser must be running)
     cmds:
-      - curl -s http://localhost/api/parse/../health | cat
+      - |
+        node -e "const http=require('http');http.get('http://localhost:3001/health',(res)=>{let d='';res.on('data',(c)=>d+=c);res.on('end',()=>console.log(d));}).on('error',(e)=>{console.error('Request failed:',e.message);process.exit(1);});"
 
-  # ── Cleanup ────────────────────────────────────────────────────────────────
+  # ── Cleanup ───────────────────────────────────────────────────────────────
 
   clean:
-    desc: Remove all build artifacts (dist/, build/, node_modules/)
+    desc: Remove all build artifacts (dist/, build/, .svelte-kit/)
     cmds:
-      - rm -rf {{.PARSER_DIR}}/dist
-      - rm -rf {{.WEB_DIR}}/build
-      - rm -rf {{.WEB_DIR}}/.svelte-kit
-      - echo "Build artifacts removed"
+      - |
+        node -e "const fs=require('fs');['{{.PARSER_DIR}}/dist','{{.WEB_DIR}}/build','{{.WEB_DIR}}/.svelte-kit'].forEach(p=>{try{fs.rmSync(p,{recursive:true,force:true});console.log('Removed '+p);}catch(e){console.log('Skipped '+p);}});"
+        - echo "Build artifacts removed"
 
   clean:deps:
     desc: Remove all node_modules across all services and tests
     cmds:
-      - rm -rf {{.PARSER_DIR}}/node_modules
-      - rm -rf {{.WEB_DIR}}/node_modules
-      - rm -rf {{.TESTS_DIR}}/node_modules
-      - echo "All node_modules removed"
+      - |
+        node -e "const fs=require('fs');['{{.PARSER_DIR}}/node_modules','{{.WEB_DIR}}/node_modules','{{.TESTS_DIR}}/node_modules'].forEach(p=>{try{fs.rmSync(p,{recursive:true,force:true});console.log('Removed '+p);}catch(e){console.log('Skipped '+p);}});"
+        - echo "All node_modules removed"
 
   clean:all:
-    desc: Remove everything — artifacts, deps, Docker volumes
+    desc: Remove everything - artifacts, deps, Docker volumes
     deps: [clean, clean:deps]
     cmds:
-      - task: stop:clean
+      - docker compose down --volumes --rmi local
+      - echo "All containers, volumes, and local images removed"
