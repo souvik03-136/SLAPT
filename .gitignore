@@ -8,10 +8,7 @@ services/parser/dist/
 services/web/build/
 services/web/.svelte-kit/
 
-# ── Environment ───────────────────────────────────────────────────────────────
-.env
-.env.local
-.env.*.local
+
 
 # ── Docker ────────────────────────────────────────────────────────────────────
 .docker/
@@ -34,7 +31,3 @@ desktop.ini
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
-# ── Misc ──────────────────────────────────────────────────────────────────────
-*.tsbuildinfo
-full_project_dump.txt
