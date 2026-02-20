@@ -31,6 +31,48 @@ Read that. You understood it immediately. That's the whole point.
 
 ---
 
+## Download & Run (No Setup)
+
+**Requires:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running. That's the only dependency.
+
+### Step 1 — Download the latest release
+
+Go to [Releases](https://github.com/souvik03-136/slapt/releases) and download `slapt-vX.X.X.zip`.
+
+### Step 2 — Unzip it
+
+Unzip anywhere. You'll get a folder with these files:
+
+```
+slapt-v0.1.0/
+  start.bat              <- Windows
+  start.sh               <- Mac / Linux
+  stop.bat               <- Windows
+  stop.sh                <- Mac / Linux
+  docker-compose.release.yml
+  .env
+```
+
+### Step 3 — Start it
+
+**Windows:** double-click `start.bat`
+
+**Mac / Linux:**
+```bash
+chmod +x start.sh
+./start.sh
+```
+
+Browser opens automatically at `http://localhost`. Done.
+
+### Stop it
+
+**Windows:** double-click `stop.bat`
+
+**Mac / Linux:** `./stop.sh`
+
+---
+
 ## The Vibe
 
 ### If you can text, you can make beats
@@ -141,7 +183,7 @@ One line. Entire vibe shift.
 
 ---
 
-## Quick Start (2 Minutes)
+## Run From Source (Developers)
 
 ### 1. Clone and configure
 
@@ -176,11 +218,11 @@ Open `http://localhost`. Done.
 ```bash
 # Terminal 1 - parser service
 cd services/parser
-PORT=3001 npm run dev
+npm run dev
 
 # Terminal 2 - web frontend
 cd services/web
-PARSER_URL=http://localhost:3001 npm run dev
+npm run dev
 ```
 
 Web runs on `http://localhost:3000`, parser on `http://localhost:3001`.
@@ -260,6 +302,9 @@ Note: chord progressions use `->` (two characters you can type on any keyboard).
 - [x] Boom-bap
 - [x] Core drum programming
 - [x] Basic effects and modifiers
+- [x] Atmosphere audio (vinyl crackle, rain, tape wobble)
+- [x] Velocity humanization
+- [x] GitHub releases with one-click install
 
 ### Phase 2 (Soon): Electronic Expansion
 - [ ] House and Techno
@@ -305,6 +350,7 @@ J Dilla and Nujabes for the whole lofi aesthetic.
 
 ## Quick Links
 
+- [Releases](https://github.com/souvik03-136/slapt/releases) - download the latest version
 - [Documentation](./docs/DOCUMENTATION.md) - architecture, language reference, API
 - [Tutorials](./docs/TUTORIALS.md) - 10 step-by-step guides from first beat to full arrangement
 - [Task Commands](./TASKS.md) - all `task` commands for Docker, dev, tests, build, and cleanup
