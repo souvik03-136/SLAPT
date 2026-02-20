@@ -11,17 +11,21 @@ import {
   scheduleDrums,
   scheduleChords,
   scheduleBass,
+  scheduleAtmosphere,
+  startAtmosphere,
+  stopAtmosphere,
+  disposeAtmosphere,
   startParts,
   disposeParts,
 } from "./scheduler";
 import type { SynthRack, EffectRack } from "./effects";
-import type { DrumPattern, ScheduledParts } from "./scheduler";
+import type { DrumPattern, AtmospherePattern, ScheduledParts } from "./scheduler";
 
-export type { DrumPattern };
+export type { DrumPattern, AtmospherePattern };
 
 let synths: SynthRack | null = null;
 let fx: EffectRack | null = null;
-let parts: ScheduledParts = { drum: null, chord: null, bass: null };
+let parts: ScheduledParts = { drum: null, chord: null, bass: null, atmosphere: null };
 let barRepeatId: number | null = null;
 let barCount = 0;
 let onBarChange: ((bar: number) => void) | null = null;
@@ -49,16 +53,11 @@ export async function playDrums(pattern: DrumPattern, tempo: number): Promise<vo
   await initAudio();
   Tone.getTransport().bpm.value = tempo;
 
-  // FIX: dispose old drum part before scheduling a new one
   parts.drum?.dispose();
   parts.drum = null;
 
-  // FIX: reset bitcrush applied flag so re-pressing play doesn't skip routing
   resetEffectState();
-
-  // Apply effects AFTER resetting state, BEFORE scheduling
   applyDrumEffects(synths!, fx!, pattern.effects);
-
   parts.drum = scheduleDrums(pattern, synths!);
 }
 
@@ -85,11 +84,30 @@ export async function playBass(progression: string[], _tempo: number): Promise<v
   parts.bass = scheduleBass(progression, synths!);
 }
 
+export async function playAtmosphere(atmos: AtmospherePattern): Promise<void> {
+  if (!isBrowser()) return;
+  await initAudio();
+
+  // Stop and dispose previous atmosphere nodes before building new ones
+  if (parts.atmosphere) {
+    stopAtmosphere(parts.atmosphere);
+    disposeAtmosphere(parts.atmosphere);
+    parts.atmosphere = null;
+  }
+
+  const hasContent = atmos.vinylCrackle > 0 || atmos.rain || atmos.tapeWobble;
+  if (hasContent) {
+    // FIX: only build the nodes here — do NOT start them yet.
+    // startAtmosphere is called from startPlayback so noise only
+    // runs while the transport is running.
+    parts.atmosphere = scheduleAtmosphere(atmos);
+  }
+}
+
 export function startPlayback(): void {
   if (!isBrowser()) return;
   barCount = 0;
 
-  // FIX: always clear previous repeat before scheduling a new one
   if (barRepeatId !== null) {
     Tone.getTransport().clear(barRepeatId);
     barRepeatId = null;
@@ -108,6 +126,11 @@ export function stopPlayback(): void {
   if (!isBrowser()) return;
   Tone.getTransport().stop();
   Tone.getTransport().cancel();
+  // FIX: explicitly stop atmosphere nodes — they are free-running Tone.Noise
+  // instances not tied to the Transport, so Transport.stop() does nothing to them
+  if (parts.atmosphere) {
+    stopAtmosphere(parts.atmosphere);
+  }
   barCount = 0;
   barRepeatId = null;
 }
@@ -115,6 +138,10 @@ export function stopPlayback(): void {
 export function pausePlayback(): void {
   if (!isBrowser()) return;
   Tone.getTransport().pause();
+  // FIX: pause atmosphere too — noise doesn't pause with the transport
+  if (parts.atmosphere) {
+    stopAtmosphere(parts.atmosphere);
+  }
 }
 
 export function setTempo(bpm: number): void {
@@ -128,7 +155,7 @@ export function cleanup(): void {
   disposeParts(parts);
   if (synths) disposeSynthRack(synths);
   if (fx) disposeEffectRack(fx);
-  parts = { drum: null, chord: null, bass: null };
+  parts = { drum: null, chord: null, bass: null, atmosphere: null };
   synths = null;
   fx = null;
   initialized = false;

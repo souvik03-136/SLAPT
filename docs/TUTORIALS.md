@@ -25,14 +25,13 @@ drums:
 The green play button in the top bar. You should hear a basic beat.
 
 **What each line does:**
-- `@genre lofi-hiphop` - sets the vibe, applies genre-aware defaults
-- `@tempo 75 bpm` - sets the speed
-- `kick on 1 and 3` - bass drum hits on beat 1 and beat 3
-- `snare on 2 and 4` - snare hits on the backbeats (this is what makes it groove)
-- `hihat 8 times` - eighth-note hi-hats, divides the bar into 8 equal hits
+- `@genre lofi-hiphop` — sets the vibe, applies genre-aware defaults
+- `@tempo 75 bpm` — sets the speed
+- `kick on 1 and 3` — bass drum hits on beat 1 and beat 3
+- `snare on 2 and 4` — snare hits on the backbeats (this is what makes it groove)
+- `hihat 8 times` — eighth-note hi-hats, divides the bar into 8 equal hits
 
-**Important:** If you don't write a `snare` line, no snare plays. Instruments only
-play when you explicitly write them.
+**Important:** If you don't write a `snare` line, no snare plays. If you don't write a `hihat` line, no hihat plays. Instruments only appear when you explicitly write them.
 
 ---
 
@@ -50,7 +49,7 @@ drums with swing(60%):
   hihat 8 times
 ```
 
-Change `swing(60%)` to `swing(30%)` and compare. Higher swing = more laid-back, shuffled feel. Lo-fi typically lives between 55-65%.
+Change `swing(60%)` to `swing(30%)` and compare. Higher swing = more laid-back, shuffled feel. Lo-fi typically lives between 55–65%.
 
 ---
 
@@ -65,8 +64,7 @@ drums with swing(60%):
   hihat closed 8 times
 ```
 
-`kick pattern [1, 2.75, 3]` places kicks at beat 1, beat 2.75 (the "and" of beat 2), and beat 3.
-This is a classic lo-fi syncopation. The Timeline panel at the bottom shows you exactly where each kick lands.
+`kick pattern [1, 2.75, 3]` places kicks at beat 1, beat 2.75 (the "and" of beat 2), and beat 3. This is a classic lo-fi syncopation. The Timeline panel at the bottom shows you exactly where each kick lands.
 
 You can also use `kick on` with more than two beats:
 
@@ -83,6 +81,8 @@ kick pattern [1, 2.75, 3]        <- lo-fi classic
 kick pattern [1, 1.5, 3]         <- double-time feel
 kick pattern [1, 3, 3.5]         <- tail on the 3
 ```
+
+**Beat validation:** SLAPT checks every beat in your pattern array. If you write `kick pattern [1, 2.75, 5]`, you'll get a `BEAT_OUT_OF_RANGE` error on the `5` specifically. Same applies to `snare on` beats.
 
 ---
 
@@ -108,17 +108,15 @@ chords using rhodes piano:
 ```
 
 **What's happening:**
-- `progression Am7 -> Fmaj7 -> Dm7 -> E7` - four chords, one per bar, looping
-- `voicing spread` - wide chord voicing (notes spread across octaves)
-- `rhythm whole notes with slight anticipation` - chord hits just before the bar
-- `reverb(medium, dreamy)` - adds space and wash
-
-The `@key Am` declaration enables scale validation. Try adding a note outside Am and watch the warning panel.
+- `progression Am7 -> Fmaj7 -> Dm7 -> E7` — four chords, one per bar, looping
+- `->` is two characters you can type on any keyboard
+- `voicing spread` — wide chord voicing (notes spread across octaves)
+- `reverb(medium, dreamy)` — adds space and wash
 
 **Try these progressions:**
 
 ```
-progression Am7 -> Fmaj7 -> Dm7 -> E7      <- classic lo-fi
+progression Am7 -> Fmaj7 -> Dm7 -> E7       <- classic lo-fi
 progression Cmaj7 -> Am7 -> Fmaj7 -> Gmaj7  <- brighter feel
 progression Dm7 -> Gmaj7 -> Cmaj7 -> Am7    <- jazzy movement
 ```
@@ -150,9 +148,7 @@ bass walking the roots:
   filter warm
 ```
 
-`bass walking the roots` means the bass plays the root note of each chord. `follow chord progression`
-locks it to whatever progression is declared in the chords block. The bass will always be one
-octave below the chord roots.
+`bass walking the roots` plays the root note of each chord, one octave below. `follow chord progression` locks it to whatever progression is declared above.
 
 ---
 
@@ -175,17 +171,23 @@ drums with swing(60%):
   hihat closed 8 times
 ```
 
-`vinyl crackle at 20% volume` - the percentage controls how loud the crackle layer is relative
-to the mix. Try values between 10-30%.
+**How each layer sounds:**
 
-`tape wobble subtle` gives a slight pitch drift, like an old cassette.
+`vinyl crackle at 20% volume` — two synthesised layers: a quiet brown noise surface hum and random pop bursts that fire at irregular intervals, simulating an actual record. The percentage controls the overall level. Try 10–30%; above 30% it becomes very noticeable.
+
+`rain sounds softly in background` — three brown/pink noise layers filtered to different frequency bands, blending into a rain-in-a-room texture. It should sit well under the mix and add a sense of space.
+
+`tape wobble subtle` — a 0.3Hz sine curve that nudges the BPM ±0.8%, simulating cassette flutter. You feel it more than hear it.
+
+**Important:** Atmosphere layers only play while the transport is running. They stop when you hit stop, and resume when you hit play again.
+
+**If you just hear white noise:** you're probably hearing rain or crackle at too high a volume with nothing else playing. Add drums and chords — the atmosphere is designed to sit under a full mix, not play alone.
 
 ---
 
 ## Tutorial 7 - Global Modifiers (3 minutes)
 
-Modifiers are the fastest way to shift the entire vibe of a track. Add them at the end of
-your file, after all blocks.
+Modifiers are the fastest way to shift the entire vibe. Add them at the end of your file.
 
 ```
 drums with swing(60%):
@@ -198,13 +200,25 @@ make it dusty
 
 **What each modifier does:**
 
-`make it groovy` - increases swing to 60% minimum, adds humanization to velocity, adds ghost notes to snare
+`make it groovy` — increases swing to 60% minimum, adds humanization to velocity, adds ghost notes to snare
 
-`make it dusty` - applies bitcrushing to drums, adds vinyl crackle to atmosphere at 20% minimum, rolls off high frequencies
+`make it dusty` — applies bitcrushing to drums, adds vinyl crackle to atmosphere at 20% minimum (creates an atmosphere block automatically if you haven't written one), rolls off high frequencies
 
-`add some laziness` - increases swing to 40% minimum, pushes timing slightly behind the beat
+`add some laziness` — increases swing to 40% minimum, pushes timing slightly behind the beat
 
-`bring energy up` - increases velocity across all instruments, adds automatic fills every 4 bars
+`bring energy up` — increases velocity across all instruments, adds automatic fills every 4 bars
+
+**`make it dusty` without an atmosphere block:**
+
+```
+drums:
+  kick on 1 and 3
+  snare on 2 and 4
+
+make it dusty
+```
+
+Even without an `atmosphere:` block, this will produce vinyl crackle at 20%. The modifier creates the atmosphere automatically. If you have an atmosphere block with crackle already above 20%, your value is kept.
 
 Modifiers stack. This is valid:
 
@@ -261,7 +275,7 @@ section outro:
 make it dusty
 ```
 
-Each section instructs the engine how to build up and break down the layers.
+Each section instructs the engine how to build up and break down layers over time.
 
 ---
 
@@ -269,13 +283,21 @@ Each section instructs the engine how to build up and break down the layers.
 
 SLAPT errors are designed to teach. Try deliberately breaking things.
 
-**Trigger a beat error:**
+**Trigger a beat error in a pattern array:**
 
 ```
-kick on 5
+kick pattern [1, 2.75, 5]
 ```
 
-The error panel shows: `Beat 5 doesn't exist in 4/4 time` with suggestions.
+The error panel shows: `Beat 5 doesn't exist in 4/4 time` with context `"kick pattern"` so you know exactly which line caused it.
+
+**Trigger a beat error on snare:**
+
+```
+snare on 2 and 6
+```
+
+Same error, context shows `"snare on"`. Previously only `kick on` beats were validated — now all three sources are checked.
 
 **Trigger a tempo warning:**
 
@@ -284,25 +306,28 @@ The error panel shows: `Beat 5 doesn't exist in 4/4 time` with suggestions.
 @tempo 180 bpm
 ```
 
-The warning panel shows: `180 BPM feels off for lofi-hiphop` with the typical range and suggestions.
+Warning: `180 BPM feels off for lofi-hiphop` with the typical range. Warnings do not block playback. Errors do.
 
-Warnings do not block playback. Errors do. The status dot in the editor header shows green (ok),
-yellow (parsing), or red (error).
+The status dot in the editor header shows green (ok), yellow (parsing), or red (error).
 
 ---
 
 ## Tutorial 10 - Velocity Humanization (3 minutes)
 
-Machines are too precise. Humans aren't. This makes your snare feel played, not programmed.
+Machines are too precise. Humans aren't.
 
 ```
 snare on 2 and 4
 snare velocity random(0.7 to 0.9)
 ```
 
-`random(0.7 to 0.9)` randomizes the snare velocity between 70% and 90% on every hit.
-The range is `0.0` (silent) to `1.0` (full velocity). For a more dynamic feel try `random(0.5 to 1.0)`.
-For subtle variation try `random(0.8 to 0.95)`.
+`random(0.7 to 0.9)` randomizes the snare velocity between 70% and 90% on every hit. The range is `0.0` (silent) to `1.0` (full velocity).
+
+These values are parsed and used directly by the audio engine — not approximated or overridden. What you write is what plays.
+
+For more dynamic feel: `random(0.5 to 1.0)`
+For subtle variation: `random(0.8 to 0.95)`
+If you write no velocity line: defaults to `random(0.6 to 0.8)`
 
 ---
 
@@ -315,9 +340,13 @@ For subtle variation try `random(0.8 to 0.95)`.
 @tempo 75 bpm
 @key Am
 
+atmosphere:
+  vinyl crackle at 15% volume
+
 drums with swing(60%):
   kick pattern [1, 2.75, 3]
   snare on 2 and 4
+  snare velocity random(0.7 to 0.9)
   hihat closed 8 times
 
 chords using rhodes piano:
@@ -375,7 +404,7 @@ bass walking the roots:
   sound mellow
 ```
 
-### Kick Only (no snare)
+### Kick Only (no snare, no hihat)
 
 ```
 @genre lofi-hiphop
@@ -383,7 +412,22 @@ bass walking the roots:
 
 drums:
   kick on 1 and 3 and 4
-  hihat closed 8 times
 ```
 
-Note: writing no `snare` line means no snare will play. This is intentional and correct.
+Writing no `snare` line means no snare plays. Writing no `hihat` line means no hihat plays. This is intentional — SLAPT only plays what you explicitly write.
+
+### Dusty With No Atmosphere Block
+
+```
+@genre lofi-hiphop
+@tempo 75 bpm
+
+drums with swing(55%):
+  kick pattern [1, 2.75, 3]
+  snare on 2 and 4
+  hihat closed 8 times
+
+make it dusty
+```
+
+`make it dusty` creates vinyl crackle at 20% automatically. You don't need an atmosphere block.

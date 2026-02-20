@@ -2,7 +2,6 @@ import express from "express";
 import cors from "cors";
 import { SlaptLexer } from "./lexer";
 import { parser } from "./parser";
-import { interpret } from "./interpreter";
 import { validateTempo, validateBeat } from "./errors";
 
 const app = express();
@@ -34,7 +33,7 @@ app.post("/api/parse", (req, res) => {
   }
 
   parser.input = lexResult.tokens;
-  const cst = parser.program();
+  parser.program();
 
   for (const parseError of parser.errors) {
     errors.push({
@@ -46,6 +45,8 @@ app.post("/api/parse", (req, res) => {
     });
   }
 
+  // ── Validation ─────────────────────────────────────────────────────────────
+
   const genreMatch = code.match(/@genre\s+(\S+)/);
   const tempoMatch = code.match(/@tempo\s+(\d+(?:\.\d+)?)\s+bpm/i);
   const genre  = genreMatch?.[1];
@@ -56,12 +57,37 @@ app.post("/api/parse", (req, res) => {
     if (tempoWarning) warnings.push(tempoWarning);
   }
 
-  const beatMatches = code.matchAll(/kick\s+on\s+([\d.]+)/gi);
-  for (const match of beatMatches) {
-    const beat = parseFloat(match[1]);
-    const beatError = validateBeat(beat);
-    if (beatError) errors.push(beatError);
+  // FIX: validate beats from "kick on", "kick pattern [...]", and "snare on"
+  const kickOnMatches = code.matchAll(/kick\s+on\s+([\d.]+(?:\s+and\s+[\d.]+)*)/gi);
+  for (const match of kickOnMatches) {
+    for (const beatStr of match[1].split(/\s+and\s+/i)) {
+      const beat = parseFloat(beatStr.trim());
+      const beatError = validateBeat(beat);
+      if (beatError) errors.push({ ...beatError, context: "kick on" });
+    }
   }
+
+  const kickPatternMatches = code.matchAll(/kick\s+pattern\s+\[([\d.,\s]+)\]/gi);
+  for (const match of kickPatternMatches) {
+    for (const beatStr of match[1].split(",")) {
+      const beat = parseFloat(beatStr.trim());
+      if (!isNaN(beat)) {
+        const beatError = validateBeat(beat);
+        if (beatError) errors.push({ ...beatError, context: "kick pattern" });
+      }
+    }
+  }
+
+  const snareOnMatches = code.matchAll(/snare\s+on\s+([\d.]+(?:\s+and\s+[\d.]+)*)/gi);
+  for (const match of snareOnMatches) {
+    for (const beatStr of match[1].split(/\s+and\s+/i)) {
+      const beat = parseFloat(beatStr.trim());
+      const beatError = validateBeat(beat);
+      if (beatError) errors.push({ ...beatError, context: "snare on" });
+    }
+  }
+
+  // ── Tokens ─────────────────────────────────────────────────────────────────
 
   const tokens = lexResult.tokens.map((t) => ({
     tokenType:   t.tokenType.name,
@@ -70,12 +96,14 @@ app.post("/api/parse", (req, res) => {
     startColumn: t.startColumn,
   }));
 
+  // ── Program ────────────────────────────────────────────────────────────────
+
   let program = null;
-  if (parser.errors.length === 0 && lexResult.errors.length === 0) {
+  if (errors.length === 0) {
     try {
       program = buildProgramFromCode(code);
     } catch (e) {
-      // interpreter errors are non-fatal
+      // non-fatal
     }
   }
 
@@ -88,9 +116,6 @@ app.post("/api/parse", (req, res) => {
   });
 });
 
-/**
- * Extracts a SlaptProgram-shaped object directly from the code string.
- */
 function buildProgramFromCode(code: string): object {
   const genreMatch = code.match(/@genre\s+(\S+)/);
   const tempoMatch = code.match(/@tempo\s+(\d+(?:\.\d+)?)\s+bpm/i);
@@ -100,20 +125,16 @@ function buildProgramFromCode(code: string): object {
   const tempo = tempoMatch ? parseFloat(tempoMatch[1]) : 75;
   const key   = keyMatch?.[1] ?? "Am";
 
-  // ---------- Drums ----------
+  // ── Drums ───────────────────────────────────────────────────────────────────
   let drums = null;
   if (/drums/i.test(code)) {
     const swingMatch = code.match(/swing\((\d+)%\)/);
     const swing = swingMatch ? parseInt(swingMatch[1]) : 0;
 
-    // FIX: Default to [] — only populate if the line actually exists in the code.
-    // Previous bug: default [1,3] / [2,4] caused phantom beats when lines were omitted.
     let kick: number[] = [];
     let snare: number[] = [];
 
     const kickPatternMatch = code.match(/kick\s+pattern\s+\[([\d.,\s]+)\]/);
-    // FIX: Use [\d.]+ (no spaces) in the capture group so "1 and 3" is fully captured.
-    // Previous regex [\d\s]+ stopped at the space before "and", losing all but the first beat.
     const kickOnMatch = code.match(/kick\s+on\s+([\d.]+(?:\s+and\s+[\d.]+)*)/i);
 
     if (kickPatternMatch) {
@@ -128,7 +149,6 @@ function buildProgramFromCode(code: string): object {
         .filter((n) => !isNaN(n));
     }
 
-    // FIX: same regex fix for snare
     const snareOnMatch = code.match(/snare\s+on\s+([\d.]+(?:\s+and\s+[\d.]+)*)/i);
     if (snareOnMatch) {
       snare = snareOnMatch[1]
@@ -137,24 +157,35 @@ function buildProgramFromCode(code: string): object {
         .filter((n) => !isNaN(n));
     }
 
-    // FIX: Default hihatCount to 0 so no phantom hihat appears when line is absent.
+    // FIX: parse snareVelocity range from code and carry it through
+    // so scheduler uses the user's values instead of hardcoded 0.7/0.9
+    let snareVelocity: { min: number; max: number } | null = null;
+    const velMatch = code.match(/snare\s+velocity\s+random\((\d+(?:\.\d+)?)\s+to\s+(\d+(?:\.\d+)?)\)/i);
+    if (velMatch) {
+      snareVelocity = {
+        min: parseFloat(velMatch[1]),
+        max: parseFloat(velMatch[2]),
+      };
+    }
+
     const hihatMatch = code.match(/hihat\s+(?:closed\s+)?(\d+)\s+times/i);
     const hihatCount = hihatMatch ? parseInt(hihatMatch[1]) : 0;
 
     const effects: string[] = [];
-    if (/bitcrush/i.test(code))  effects.push("bitcrush");
-    if (/compress/i.test(code))  effects.push("compress");
+    if (/bitcrush/i.test(code)) effects.push("bitcrush");
+    if (/compress/i.test(code)) effects.push("compress");
 
     drums = {
       swing,
       kick,
       snare,
+      snareVelocity,
       hihat: { count: hihatCount, type: "closed" as const },
       effects,
     };
   }
 
-  // ---------- Chords ----------
+  // ── Chords ──────────────────────────────────────────────────────────────────
   let chords = null;
   if (/chords/i.test(code)) {
     const progressionMatch = code.match(/progression\s+([^\n]+)/);
@@ -176,7 +207,7 @@ function buildProgramFromCode(code: string): object {
     };
   }
 
-  // ---------- Bass ----------
+  // ── Bass ────────────────────────────────────────────────────────────────────
   let bass = null;
   if (/bass/i.test(code)) {
     const soundMatch  = code.match(/sound\s+(\S+)/i);
@@ -188,7 +219,7 @@ function buildProgramFromCode(code: string): object {
     };
   }
 
-  // ---------- Atmosphere ----------
+  // ── Atmosphere ──────────────────────────────────────────────────────────────
   let atmosphere = null;
   if (/atmosphere/i.test(code)) {
     const vinylMatch = code.match(/vinyl\s+crackle\s+at\s+(\d+)%/i);
@@ -199,12 +230,33 @@ function buildProgramFromCode(code: string): object {
     };
   }
 
-  // ---------- Modifiers ----------
+  // ── Modifiers ───────────────────────────────────────────────────────────────
   const modifiers: string[] = [];
-  if (/make\s+it\s+dusty/i.test(code))    modifiers.push("dusty");
-  if (/make\s+it\s+groovy/i.test(code))   modifiers.push("groovy");
+  if (/make\s+it\s+dusty/i.test(code))     modifiers.push("dusty");
+  if (/make\s+it\s+groovy/i.test(code))    modifiers.push("groovy");
   if (/add\s+some\s+laziness/i.test(code)) modifiers.push("lazy");
-  if (/bring\s+energy\s+up/i.test(code))  modifiers.push("energetic");
+  if (/bring\s+energy\s+up/i.test(code))   modifiers.push("energetic");
+
+  // ── Apply modifiers to output ───────────────────────────────────────────────
+  // dusty: bump vinyl crackle to at least 20% even if no atmosphere block written
+  if (modifiers.includes("dusty")) {
+    if (atmosphere) {
+      atmosphere.vinylCrackle = Math.max(atmosphere.vinylCrackle, 20);
+    } else {
+      atmosphere = { vinylCrackle: 20, rain: false, tapeWobble: false };
+    }
+    if (drums && !drums.effects.includes("bitcrush")) {
+      drums.effects.push("bitcrush");
+    }
+  }
+  // groovy: bump swing to at least 60%
+  if (modifiers.includes("groovy") && drums) {
+    drums.swing = Math.max(drums.swing, 60);
+  }
+  // lazy: bump swing to at least 40%
+  if (modifiers.includes("lazy") && drums) {
+    drums.swing = Math.max(drums.swing, 40);
+  }
 
   return { genre, tempo, key, drums, chords, bass, atmosphere, modifiers };
 }

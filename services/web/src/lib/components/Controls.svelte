@@ -5,6 +5,7 @@
     playDrums,
     playChords,
     playBass,
+    playAtmosphere,
     startPlayback,
     stopPlayback,
     pausePlayback,
@@ -25,17 +26,18 @@
     const drums = program?.drums;
     const chords = program?.chords;
     const bass = program?.bass;
+    const atmosphere = program?.atmosphere;
 
-    // FIX: never inject default kick/snare - respect exactly what the user wrote.
-    // If they wrote no snare line, snare should be [] (silent). Same for kick.
     if (drums) {
       await playDrums(
         {
-          kick:    drums.kick    ?? [],
-          snare:   drums.snare   ?? [],
-          hihat:   drums.hihat   ?? { count: 0, type: "closed" },
-          swing:   drums.swing   ?? 0,
-          effects: drums.effects ?? [],
+          kick:          drums.kick          ?? [],
+          snare:         drums.snare         ?? [],
+          // FIX: pass parsed snareVelocity through — null means use scheduler default
+          snareVelocity: drums.snareVelocity ?? null,
+          hihat:         drums.hihat         ?? { count: 0, type: "closed" },
+          swing:         drums.swing         ?? 0,
+          effects:       drums.effects       ?? [],
         },
         tempo
       );
@@ -47,6 +49,16 @@
 
     if (bass) {
       await playBass(chords?.progression ?? [], tempo);
+    }
+
+    // FIX: play atmosphere if present — was wired up in stores/types but never
+    // called into the audio engine, so vinyl crackle/rain were always silent
+    if (atmosphere) {
+      await playAtmosphere({
+        vinylCrackle: atmosphere.vinylCrackle ?? 0,
+        rain:         atmosphere.rain         ?? false,
+        tapeWobble:   atmosphere.tapeWobble   ?? false,
+      });
     }
 
     startPlayback();

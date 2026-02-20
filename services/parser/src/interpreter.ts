@@ -1,6 +1,5 @@
 import type {
   Program,
-  TopLevelNode,
   DrumBlock,
   ChordBlock,
   BassBlock,
@@ -10,6 +9,7 @@ import type {
   TempoDirective,
   KeyDirective,
   MelodyBlock,
+  DrumPattern,
 } from "./ast";
 
 export interface SlaptProgram {
@@ -29,6 +29,7 @@ export interface DrumOutput {
   swing: number;
   kick: number[];
   snare: number[];
+  snareVelocity: { min: number; max: number } | null;
   hihat: HihatOutput;
   effects: string[];
 }
@@ -73,22 +74,10 @@ export interface SectionOutput {
 }
 
 const GENRE_DEFAULTS: Record<string, Partial<SlaptProgram>> = {
-  "lofi-hiphop": {
-    tempo: 75,
-    key: "Am",
-  },
-  "boom-bap": {
-    tempo: 90,
-    key: "Dm",
-  },
-  house: {
-    tempo: 128,
-    key: "Cm",
-  },
-  techno: {
-    tempo: 138,
-    key: "Am",
-  },
+  "lofi-hiphop": { tempo: 75, key: "Am" },
+  "boom-bap":    { tempo: 90, key: "Dm" },
+  house:         { tempo: 128, key: "Cm" },
+  techno:        { tempo: 138, key: "Am" },
 };
 
 export function interpret(ast: Program): SlaptProgram {
@@ -107,44 +96,36 @@ export function interpret(ast: Program): SlaptProgram {
 
   for (const node of ast.body) {
     switch (node.type) {
-      case "GenreDirective":
+      case "GenreDirective": {
         result.genre = (node as GenreDirective).genre;
         const defaults = GENRE_DEFAULTS[result.genre];
         if (defaults) Object.assign(result, defaults);
         break;
-
+      }
       case "TempoDirective":
         result.tempo = (node as TempoDirective).bpm;
         break;
-
       case "KeyDirective":
         result.key = (node as KeyDirective).key;
         break;
-
       case "DrumBlock":
         result.drums = interpretDrums(node as DrumBlock);
         break;
-
       case "ChordBlock":
         result.chords = interpretChords(node as ChordBlock);
         break;
-
       case "BassBlock":
         result.bass = interpretBass(node as BassBlock);
         break;
-
       case "AtmosphereBlock":
         result.atmosphere = interpretAtmosphere(node as AtmosphereBlock);
         break;
-
       case "SectionBlock":
         result.sections.push(interpretSection(node as SectionBlock));
         break;
-
       case "MelodyBlock":
         result.melody = interpretMelody(node as MelodyBlock);
         break;
-
       case "ModifierStatement":
         result.modifiers.push((node as any).modifier);
         break;
@@ -160,8 +141,9 @@ function interpretDrums(node: DrumBlock): DrumOutput {
     swing: node.swing ?? 0,
     kick: [],
     snare: [],
+    snareVelocity: null,
     hihat: {
-      count: 8,
+      count: 0,
       type: "closed",
       velocityVariation: false,
     },
@@ -175,17 +157,21 @@ function interpretDrums(node: DrumBlock): DrumOutput {
         break;
       case "snare":
         output.snare = pattern.beats.map((b) => b.value);
+        // FIX: carry actual min/max velocity values instead of just a boolean
         if (pattern.velocity) {
-          output.hihat.velocityVariation = true;
+          output.snareVelocity = {
+            min: pattern.velocity.min,
+            max: pattern.velocity.max,
+          };
         }
         break;
       case "hihat_closed":
-        output.hihat.count = pattern.count ?? 8;
+        output.hihat.count = pattern.count ?? 0;
         output.hihat.type = "closed";
         output.hihat.feel = pattern.feel;
         break;
       case "hihat_open":
-        output.hihat.type = "mixed";
+        output.hihat.type = output.hihat.count > 0 ? "mixed" : "open";
         break;
     }
   }
@@ -261,6 +247,9 @@ function applyModifiers(program: SlaptProgram): void {
         }
         if (program.atmosphere) {
           program.atmosphere.vinylCrackle = Math.max(program.atmosphere.vinylCrackle, 20);
+        } else {
+          // dusty implies some vinyl crackle even if no atmosphere block written
+          program.atmosphere = { vinylCrackle: 20, rain: false, tapeWobble: false };
         }
         break;
       case "lazy":
