@@ -46,11 +46,11 @@ Read that. You understood it immediately. That's the whole point.
 
 **Requires:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running. That's literally the only dependency.
 
-### Step 1 — Download the latest release
+### Step 1 -> Download the latest release
 
 Go to [Releases](https://github.com/souvik03-136/slapt/releases) and download `slapt-vX.X.X.zip`.
 
-### Step 2 — Unzip it
+### Step 2 -> Unzip it
 
 Unzip anywhere. You'll get a folder with these files:
 
@@ -64,7 +64,7 @@ slapt-v0.1.0/
   .env
 ```
 
-### Step 3 — Start it
+### Step 3 -> Start it
 
 **Windows:** double-click `start.bat`
 
@@ -296,13 +296,13 @@ make it dusty
 
 ## The SLAPT Philosophy
 
-**Write Music Like You Feel It** — If you can describe it, you can code it.
+**Write Music Like You Feel It** -> If you can describe it, you can code it.
 
-**Mistakes Are Features** — In lofi, imperfection is the aesthetic. Your "mistakes" might be the best part.
+**Mistakes Are Features** -> In lofi, imperfection is the aesthetic. Your "mistakes" might be the best part.
 
-**No Gatekeeping** — Free, approachable, welcomes everyone.
+**No Gatekeeping** -> Free, approachable, welcomes everyone.
 
-**Progressive Complexity** — Start simple. Add layers as you learn. Never hit a wall.
+**Progressive Complexity** -> Start simple. Add layers as you learn. Never hit a wall.
 
 ---
 
@@ -348,13 +348,13 @@ Check out [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## Quick Links
 
-- [Releases](https://github.com/souvik03-136/slapt/releases) — download the latest version
-- [Documentation](./docs/DOCUMENTATION.md) — architecture, language reference, API
-- [Tutorials](./docs/TUTORIALS.md) — 10 step-by-step guides from first beat to full arrangement
-- [Task Commands](./TASKS.md) — all `task` commands for Docker, dev, tests, build, and cleanup
-- [Tests](./tests) — lexer, error validation, and API integration tests
-- [Contributing](./CONTRIBUTING.md) — how to report bugs, add genres, submit PRs
-- [Security](./SECURITY.md) — how to report vulnerabilities
+- [Releases](https://github.com/souvik03-136/slapt/releases) -> download the latest version
+- [Documentation](./docs/DOCUMENTATION.md) -> architecture, language reference, API
+- [Tutorials](./docs/TUTORIALS.md) -> 10 step-by-step guides from first beat to full arrangement
+- [Task Commands](./TASKS.md) -> all `task` commands for Docker, dev, tests, build, and cleanup
+- [Tests](./tests) -> lexer, error validation, and API integration tests
+- [Contributing](./CONTRIBUTING.md) -> how to report bugs, add genres, submit PRs
+- [Security](./SECURITY.md) -> how to report vulnerabilities
 - [Report Issues](https://github.com/souvik03-136/slapt/issues)
 - [Feature Requests](https://github.com/souvik03-136/slapt/discussions)
 
@@ -362,7 +362,7 @@ Check out [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## License
 
-MIT — Do whatever you want. Make money. Don't make money. Just make music.
+Non-Commercial -> Free to use, share, and build on. Just don't sell it or use it to make money.
 
 ---
 

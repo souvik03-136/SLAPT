@@ -25,11 +25,11 @@ drums:
 The green play button in the top bar. You should hear a basic beat.
 
 **What each line does:**
-- `@genre lofi-hiphop` — sets the vibe, applies genre-aware defaults
-- `@tempo 75 bpm` — sets the speed
-- `kick on 1 and 3` — bass drum hits on beat 1 and beat 3
-- `snare on 2 and 4` — snare hits on the backbeats (this is what makes it groove)
-- `hihat 8 times` — eighth-note hi-hats, divides the bar into 8 equal hits
+- `@genre lofi-hiphop` -> sets the vibe, applies genre-aware defaults
+- `@tempo 75 bpm` -> sets the speed
+- `kick on 1 and 3` -> bass drum hits on beat 1 and beat 3
+- `snare on 2 and 4` -> snare hits on the backbeats (this is what makes it groove)
+- `hihat 8 times` -> eighth-note hi-hats, divides the bar into 8 equal hits
 
 **Important:** If you don't write a `snare` line, no snare plays. If you don't write a `hihat` line, no hihat plays. Instruments only appear when you explicitly write them.
 
@@ -108,10 +108,10 @@ chords using rhodes piano:
 ```
 
 **What's happening:**
-- `progression Am7 -> Fmaj7 -> Dm7 -> E7` — four chords, one per bar, looping
+- `progression Am7 -> Fmaj7 -> Dm7 -> E7` -> four chords, one per bar, looping
 - `->` is two characters you can type on any keyboard
-- `voicing spread` — wide chord voicing (notes spread across octaves)
-- `reverb(medium, dreamy)` — adds space and wash
+- `voicing spread` -> wide chord voicing (notes spread across octaves)
+- `reverb(medium, dreamy)` -> adds space and wash
 
 **Try these progressions:**
 
@@ -173,15 +173,15 @@ drums with swing(60%):
 
 **How each layer sounds:**
 
-`vinyl crackle at 20% volume` — two synthesised layers: a quiet brown noise surface hum and random pop bursts that fire at irregular intervals, simulating an actual record. The percentage controls the overall level. Try 10–30%; above 30% it becomes very noticeable.
+`vinyl crackle at 20% volume` -> two synthesised layers: a quiet brown noise surface hum and random pop bursts that fire at irregular intervals, simulating an actual record. The percentage controls the overall level. Try 10–30%; above 30% it becomes very noticeable.
 
-`rain sounds softly in background` — three brown/pink noise layers filtered to different frequency bands, blending into a rain-in-a-room texture. It should sit well under the mix and add a sense of space.
+`rain sounds softly in background` -> three brown/pink noise layers filtered to different frequency bands, blending into a rain-in-a-room texture. It should sit well under the mix and add a sense of space.
 
-`tape wobble subtle` — a 0.3Hz sine curve that nudges the BPM ±0.8%, simulating cassette flutter. You feel it more than hear it.
+`tape wobble subtle` -> a 0.3Hz sine curve that nudges the BPM ±0.8%, simulating cassette flutter. You feel it more than hear it.
 
 **Important:** Atmosphere layers only play while the transport is running. They stop when you hit stop, and resume when you hit play again.
 
-**If you just hear white noise:** you're probably hearing rain or crackle at too high a volume with nothing else playing. Add drums and chords — the atmosphere is designed to sit under a full mix, not play alone.
+**If you just hear white noise:** you're probably hearing rain or crackle at too high a volume with nothing else playing. Add drums and chords -> the atmosphere is designed to sit under a full mix, not play alone.
 
 ---
 
@@ -200,13 +200,13 @@ make it dusty
 
 **What each modifier does:**
 
-`make it groovy` — increases swing to 60% minimum, adds humanization to velocity, adds ghost notes to snare
+`make it groovy` -> increases swing to 60% minimum, adds humanization to velocity, adds ghost notes to snare
 
-`make it dusty` — applies bitcrushing to drums, adds vinyl crackle to atmosphere at 20% minimum (creates an atmosphere block automatically if you haven't written one), rolls off high frequencies
+`make it dusty` -> applies bitcrushing to drums, adds vinyl crackle to atmosphere at 20% minimum (creates an atmosphere block automatically if you haven't written one), rolls off high frequencies
 
-`add some laziness` — increases swing to 40% minimum, pushes timing slightly behind the beat
+`add some laziness` -> increases swing to 40% minimum, pushes timing slightly behind the beat
 
-`bring energy up` — increases velocity across all instruments, adds automatic fills every 4 bars
+`bring energy up` -> increases velocity across all instruments, adds automatic fills every 4 bars
 
 **`make it dusty` without an atmosphere block:**
 
@@ -297,7 +297,7 @@ The error panel shows: `Beat 5 doesn't exist in 4/4 time` with context `"kick pa
 snare on 2 and 6
 ```
 
-Same error, context shows `"snare on"`. Previously only `kick on` beats were validated — now all three sources are checked.
+Same error, context shows `"snare on"`. Previously only `kick on` beats were validated -> now all three sources are checked.
 
 **Trigger a tempo warning:**
 
@@ -323,7 +323,7 @@ snare velocity random(0.7 to 0.9)
 
 `random(0.7 to 0.9)` randomizes the snare velocity between 70% and 90% on every hit. The range is `0.0` (silent) to `1.0` (full velocity).
 
-These values are parsed and used directly by the audio engine — not approximated or overridden. What you write is what plays.
+These values are parsed and used directly by the audio engine -> not approximated or overridden. What you write is what plays.
 
 For more dynamic feel: `random(0.5 to 1.0)`
 For subtle variation: `random(0.8 to 0.95)`
@@ -414,7 +414,7 @@ drums:
   kick on 1 and 3 and 4
 ```
 
-Writing no `snare` line means no snare plays. Writing no `hihat` line means no hihat plays. This is intentional — SLAPT only plays what you explicitly write.
+Writing no `snare` line means no snare plays. Writing no `hihat` line means no hihat plays. This is intentional -> SLAPT only plays what you explicitly write.
 
 ### Dusty With No Atmosphere Block
 

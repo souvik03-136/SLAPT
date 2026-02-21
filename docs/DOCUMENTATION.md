@@ -127,9 +127,9 @@ Fires a warning when your `@tempo` is outside the genre's typical range.
 
 Fires an error when a beat number exceeds the time signature (default 4/4). Beat validation runs against all beat sources:
 
-- `kick on X and Y` — each beat checked individually
-- `kick pattern [X, Y, Z]` — every value in the array checked
-- `snare on X and Y` — each beat checked individually
+- `kick on X and Y` -> each beat checked individually
+- `kick pattern [X, Y, Z]` -> every value in the array checked
+- `snare on X and Y` -> each beat checked individually
 
 ```
 kick pattern [1, 2.75, 5]
@@ -218,11 +218,11 @@ atmosphere:
 
 All three layers are optional and can be used in any combination.
 
-**Vinyl crackle** — two-layer synthesis: a quiet brown noise surface rumble (bandpass ~2200Hz) plus random pop bursts triggered at random intervals between 0.3–2.5 seconds. The percentage controls overall level; useful range is 10–35%.
+**Vinyl crackle** -> two-layer synthesis: a quiet brown noise surface rumble (bandpass ~2200Hz) plus random pop bursts triggered at random intervals between 0.3–2.5 seconds. The percentage controls overall level; useful range is 10–35%.
 
-**Rain** — three-layer brown/pink noise synthesis: low rumble below 200Hz, mid splash bandpass at 700Hz, high sparkle bandpass at 1400Hz. Blends into a natural rain-in-a-room texture at low overall gain.
+**Rain** -> three-layer brown/pink noise synthesis: low rumble below 200Hz, mid splash bandpass at 700Hz, high sparkle bandpass at 1400Hz. Blends into a natural rain-in-a-room texture at low overall gain.
 
-**Tape wobble** — nudges `Transport.bpm` ±0.8% on a 0.3Hz sine curve, simulating cassette flutter. Inaudible as discrete steps, felt as a subtle pitch drift.
+**Tape wobble** -> nudges `Transport.bpm` ±0.8% on a 0.3Hz sine curve, simulating cassette flutter. Inaudible as discrete steps, felt as a subtle pitch drift.
 
 All atmosphere layers start and stop with playback. Nothing plays when the transport is stopped.
 
@@ -285,19 +285,19 @@ atmosphere:
 
 Kick and snare have **separate** compressors so they never bleed into each other. When bitcrush is applied, each instrument gets its **own** BitCrusher instance.
 
-Atmosphere nodes are free-running (`Tone.Noise`, not transport-scheduled). They start and stop explicitly with playback — `Transport.stop()` alone does not stop them.
+Atmosphere nodes are free-running (`Tone.Noise`, not transport-scheduled). They start and stop explicitly with playback -> `Transport.stop()` alone does not stop them.
 
 ### Playback Flow
 
-1. `initAudio()` — creates all synths and effects, must be called after a user gesture
-2. `playDrums(pattern, tempo)` — builds a `Tone.Part` for kick/snare/hihat, applies effects
-3. `playChords(progression, instrument, tempo)` — builds a `Tone.Part` for chords
-4. `playBass(progression, tempo)` — builds a `Tone.Part` for bass roots
-5. `playAtmosphere(atmos)` — builds atmosphere nodes (does not start them yet)
-6. `startPlayback()` — starts `Tone.Transport` and all parts, calls `startAtmosphere()`
-7. `stopPlayback()` — stops transport, cancels scheduled events, calls `stopAtmosphere()`
-8. `pausePlayback()` — pauses transport, calls `stopAtmosphere()`
-9. `cleanup()` — disposes all Tone nodes, call on component destroy
+1. `initAudio()` -> creates all synths and effects, must be called after a user gesture
+2. `playDrums(pattern, tempo)` -> builds a `Tone.Part` for kick/snare/hihat, applies effects
+3. `playChords(progression, instrument, tempo)` -> builds a `Tone.Part` for chords
+4. `playBass(progression, tempo)` -> builds a `Tone.Part` for bass roots
+5. `playAtmosphere(atmos)` -> builds atmosphere nodes (does not start them yet)
+6. `startPlayback()` -> starts `Tone.Transport` and all parts, calls `startAtmosphere()`
+7. `stopPlayback()` -> stops transport, cancels scheduled events, calls `stopAtmosphere()`
+8. `pausePlayback()` -> pauses transport, calls `stopAtmosphere()`
+9. `cleanup()` -> disposes all Tone nodes, call on component destroy
 
 ### Snare Velocity
 
@@ -346,7 +346,7 @@ Derived stores: `hasErrors`, `hasWarnings`, `isPlaying`.
 |---|---|
 | `Editor.svelte` | CodeMirror 6 instance, debounced parse on change |
 | `Controls.svelte` | Play/pause/stop, passes exact parsed pattern to engine including `snareVelocity` and `atmosphere` |
-| `Timeline.svelte` | 16-step grid — beat labels are absolutely positioned overlays so columns stay equal width |
+| `Timeline.svelte` | 16-step grid -> beat labels are absolutely positioned overlays so columns stay equal width |
 | `ErrorPanel.svelte` | Renders errors (with `context` field) and warnings with suggestions |
 
 Parse is debounced at **400ms** after the last keystroke.

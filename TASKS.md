@@ -46,10 +46,10 @@ task install      # install deps for all services + tests
 Run services individually with hot reload.
 
 ```bash
-# Terminal 1 — parser (http://localhost:3001)
+# Terminal 1 -> parser (http://localhost:3001)
 task dev:parser
 
-# Terminal 2 — web frontend (http://localhost:3000)
+# Terminal 2 -> web frontend (http://localhost:3000)
 task dev:web
 ```
 
@@ -82,7 +82,7 @@ task dev:web
 |---|---|
 | `task test` | Run all tests (parser must be running) |
 | `task test:full` | Auto-start parser in Docker, run all tests, stop |
-| `task test:unit` | Run unit tests only — no server needed |
+| `task test:unit` | Run unit tests only -> no server needed |
 | `task test:lexer` | Run lexer tests only |
 | `task test:errors` | Run error validation tests only |
 | `task test:api` | Run API integration tests (parser must be running) |
@@ -118,7 +118,7 @@ Both require services to be running.
 |---|---|
 | `task clean` | Remove build artifacts (`dist/`, `build/`, `.svelte-kit/`) |
 | `task clean:deps` | Remove all `node_modules` across all services and tests |
-| `task clean:all` | Remove everything — artifacts, deps, Docker volumes |
+| `task clean:all` | Remove everything -> artifacts, deps, Docker volumes |
 | `task nuke` | Alias for `task stop:clean` |
 
 ---
