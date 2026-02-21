@@ -346,6 +346,16 @@ Check out [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ---
 
+## Community Tracks
+
+People are making things with SLAPT. Come see what's possible -> or add yours.
+
+- **Browse tracks:** [TRACKS.md](./TRACKS.md)
+- **Quick share (no PR):** [Discussions → Show & Tell](https://github.com/souvik03-136/slapt/discussions)
+- **Add permanently:** Fork -> create `tracks/your-username--track-name.md` -> PR
+
+---
+
 ## Quick Links
 
 - [Releases](https://github.com/souvik03-136/slapt/releases) -> download the latest version
