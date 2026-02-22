@@ -378,8 +378,13 @@ SLAPT/
 │           │   │   │                       #   wires all engine calls + snareVelocity + atmos
 │           │   │   ├── Timeline.svelte     # 16-step grid: decimal beat → step conversion,
 │           │   │   │                       #   CSS grid columns, absolute beat label overlays
-│           │   │   └── ErrorPanel.svelte   # Errors + warnings: code, line, context,
-│           │   │                           #   suggestions, collapsible sections
+│           │   │   ├── ErrorPanel.svelte   # Errors + warnings: code, line, context,
+│           │   │   │                       #   suggestions, collapsible sections
+│           │   │   └── DocsDrawer.svelte   # NEW — slide-over docs panel:
+│           │   │                           #   triggered by Docs button in topbar,
+│           │   │                           #   sidenav + scrollable content sections,
+│           │   │                           #   full language reference + examples,
+│           │   │                           #   closes on ESC / backdrop click / ✕ button
 │           │   │
 │           │   └── stores/
 │           │       └── slapt.ts      # Svelte writable store:
@@ -391,8 +396,10 @@ SLAPT/
 │           │
 │           └── routes/
 │               ├── +layout.svelte    # Root layout: imports app.css
-│               └── +page.svelte      # Main page: topbar, sidebar (genre templates +
-│                                     #   quick modifiers), editor, resizable bottom panels
+│               └── +page.svelte      # Main page: topbar (includes Docs button that
+│                                     #   sets docsOpen = true), sidebar (genre templates +
+│                                     #   quick modifiers), editor, resizable bottom panels,
+│                                     #   mounts <DocsDrawer bind:open={docsOpen} />
 │
 └── tests/
     ├── tsconfig.json                 # baseUrl ".." so parser/src imports resolve
@@ -403,7 +410,6 @@ SLAPT/
     └── api.test.ts                   # Integration: /health, success, token shapes,
                                       #   warnings, errors, 400 bad request cases
 ```
-
 ---
 
 ## Running SLAPT

@@ -1,10 +1,9 @@
-
-<script>
+<script lang="ts">
   export let open = false;
 
   function close() { open = false; }
 
-  function handleKeydown(e) {
+  function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') close();
   }
 
@@ -39,7 +38,7 @@
     ]},
   ];
 
-  function scrollTo(id) {
+  function scrollTo(id: string) {
     activeSection = id;
     const el = document.getElementById('doc-' + id);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -679,7 +678,7 @@
     font-size: 12px; line-height: 1.65;
     color: var(--doc-text);
   }
-  p code, li code, td code {
+  p code, td code {
     background: var(--doc-bg3);
     border: 1px solid var(--doc-border);
     padding: 1px 5px; border-radius: 3px;
@@ -757,7 +756,6 @@
     font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
     color: var(--doc-text3); padding: 8px 14px;
   }
-  .cs-group code { display: none; }
 
   /* ── RESPONSIVE ── */
   @media (max-width: 600px) {
