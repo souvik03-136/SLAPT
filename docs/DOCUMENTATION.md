@@ -458,7 +458,7 @@ SLAPT/
 │           │   │                     #   disposeEffectRack, disposeSynthRack
 │           │   │
 │           │   ├── midi/
-│           │   │   └── export.ts     # NEW FILE — pure-TypeScript MIDI builder:
+│           │   │   └── export.ts     # Pure-TypeScript MIDI builder:
 │           │   │                     #   exportMidi(program, bars) → Uint8Array
 │           │   │                     #   downloadMidi(program, filename) → browser download
 │           │   │                     #   PPQN = 480, format type 1 (multi-track)
@@ -473,34 +473,28 @@ SLAPT/
 │           │   ├── components/
 │           │   │   ├── Editor.svelte       # CodeMirror 6: oneDark, line numbers,
 │           │   │   │                       #   400ms debounced parse, status dot
-│           │   │   │                       #   NEW: copy-to-clipboard button top-right
+│           │   │   │                       #   copy-to-clipboard button top-right
 │           │   │   │                       #     SVG icon, 1.8s checkmark feedback
 │           │   │   ├── Controls.svelte     # Play/pause/stop: reads program from store,
 │           │   │   │                       #   wires all engine calls + snareVelocity + atmos
-│           │   │   │                       #   NEW: MIDI export button (disabled on errors)
+│           │   │   │                       #   MIDI export button (disabled on errors)
 │           │   │   │                       #     calls downloadMidi(), checkmark feedback
-│           │   │   │                       #   UPDATED: passes hihatOpenBeats to playDrums
+│           │   │   │                       #   passes hihatOpenBeats to playDrums
 │           │   │   ├── Timeline.svelte     # 16-step grid: decimal beat → step conversion,
 │           │   │   │                       #   CSS grid columns, absolute beat label overlays
 │           │   │   ├── ErrorPanel.svelte   # Errors + warnings: code, line, context,
 │           │   │   │                       #   suggestions, collapsible sections
 │           │   │   └── DocsDrawer.svelte   # Slide-over docs panel:
 │           │   │                           #   triggered by Docs button in topbar,
-│           │   │                           #   sidenav + scrollable content sections,
-│           │   │                           #   NEW sections: Time Signatures, MIDI Export,
-│           │   │                           #     Auto-Save
-│           │   │                           #   UPDATED: Keys table (11 entries),
-│           │   │                           #     Drums section (hihat open on documented),
-│           │   │                           #     Cheat sheet, Directives table
-│           │   │                           #   NEW examples: 3/4 Waltz, 5/4 Odd Time
+│           │   │                           #   sidenav + scrollable content sections
 │           │   │                           #   closes on ESC / backdrop click / ✕ button
 │           │   │
 │           │   └── stores/
 │           │       └── slapt.ts      # Svelte writable store:
-│           │                         #   NEW: loadSavedCode() — reads localStorage on init
-│           │                         #   NEW: saveCode() — writes on every setCode() call
-│           │                         #   NEW: resetCode() — restores INITIAL_CODE + saves
-│           │                         #   UPDATED: INITIAL_CODE includes hihat open on 4
+│           │                         #   loadSavedCode() — reads localStorage on init
+│           │                         #   saveCode() — writes on every setCode() call
+│           │                         #   resetCode() — restores INITIAL_CODE + saves
+│           │                         #   INITIAL_CODE includes hihat open on 4
 │           │                         #   Storage key: "slapt_code_v1"
 │           │                         #   SSR-safe: typeof window checks throughout
 │           │                         #   state — code, parseResult, playbackState,
@@ -519,16 +513,16 @@ SLAPT/
     ├── tsconfig.json                 # baseUrl ".." so parser/src imports resolve
     ├── lexer.test.ts                 # Unit: all token types, decimal beats, arrows,
     │                                 #   atmosphere, modifiers, comment skipping
-    │                                 #   NEW: timesig token, slash token, open/on tokens
+    │                                 #   timesig token, slash token, open/on tokens
     ├── errors.test.ts                # Unit: validateTempo, validateBeat,
     │                                 #   validateNoteInScale — full edge case coverage
-    │                                 #   NEW: hihat open on beat validation
-    │                                 #   NEW: timesig-adjusted beat ranges (3/4, 5/4)
-    │                                 #   NEW: F#m, Bb, Ab, Ebm scale note tests
+    │                                 #   hihat open on beat validation
+    │                                 #   timesig-adjusted beat ranges (3/4, 5/4)
+    │                                 #   F#m, Bb, Ab, Ebm scale note tests
     └── api.test.ts                   # Integration: /health, success, token shapes,
                                       #   warnings, errors, 400 bad request cases
-                                      #   NEW: timeSig field in program output
-                                      #   NEW: hihatOpenBeats field in drums output
+                                      #   timeSig field in program output
+                                      #   hihatOpenBeats field in drums output
 ```
 
 ---
@@ -719,6 +713,12 @@ Fires an **error** when `@timesig` is used with a value other than 3/4, 4/4, or 
 
 Must appear at the top. `@timesig` defaults to 4/4. Supported values: `3/4`, `4/4`, `5/4`.
 
+**Supported genres:** `lofi-hiphop` · `boom-bap` · `house` · `techno` · `dnb` · `ambient` · `trap`
+
+**Supported keys:** `Am` · `Cm` · `Dm` · `Em` · `F#m` · `Ebm` · `C` · `G` · `F` · `Bb` · `Ab`
+
+**Supported time signatures:** `3/4` · `4/4` (default) · `5/4`
+
 ### Drum Block
 
 ```
@@ -744,7 +744,9 @@ drums with swing(60%):
 | `hihat open on X` | Open hihat on beat X. Multiple: `hihat open on 2 and 4`. Closed grid skips those positions automatically. |
 | `swing(N%)` | Shifts every other 8th note by N% |
 
-**Open hihat:** When `hihat open on 4` and `hihat closed 8 times` are both present, the closed grid fires on all 8 positions except beat 4, where the open hihat fires instead. No double-hit.
+**Open hihat:** When `hihat open on 4` and `hihat closed 8 times` are both present, the closed grid fires on all 8 positions except beat 4, where the open hihat fires instead. No double-hit. The open hihat uses a longer gate (`8n` vs `16n`) and higher velocity — that's what gives it the sustained, washy sound. Beat validation applies here too: `hihat open on 4` in `@timesig 3/4` triggers `BEAT_OUT_OF_RANGE`.
+
+**Instruments only play when explicitly written.** No `snare` line = no snare. No `hihat` line = no hihat.
 
 ### Chord Block
 
@@ -758,6 +760,8 @@ chords using rhodes piano:
 ```
 
 Built-in voicings: `Am7`, `Fmaj7`, `Dm7`, `E7`, `Cmaj7`, `Gmaj7`, `Am`, `Dm`, `Em`
+
+Note: chord progressions use `->` (two ASCII characters — works on every keyboard).
 
 ### Bass Block
 
@@ -783,18 +787,44 @@ atmosphere:
 | **Rain** | Brown → lowpass 200Hz + brown → bandpass 700Hz + pink → bandpass 1400Hz |
 | **Tape wobble** | `setInterval(300ms)` nudges `Transport.bpm` ±0.8% on a 0.3Hz sine |
 
-All layers start and stop with playback.
+All layers are synthesized in the browser — no audio files, no downloads. All layers start and stop with playback.
 
 ### Global Modifiers
+
+```
+make it groovy
+make it dusty
+add some laziness
+bring energy up
+```
 
 | Modifier | Effect |
 |---|---|
 | `make it groovy` | Swing ≥ 60%, humanization, ghost notes |
-| `make it dusty` | Bitcrush on drums, vinyl crackle ≥ 20% (auto-creates atmosphere if absent) |
-| `add some laziness` | Swing ≥ 40%, pushed-back timing |
-| `bring energy up` | Increased velocity, fills every 4 bars |
+| `make it dusty` | Bitcrush on drums, vinyl crackle ≥ 20% (auto-creates atmosphere block if absent) |
+| `add some laziness` | Swing ≥ 40%, pushed-back timing, lower velocity |
+| `bring energy up` | Higher velocity, drum fills every 4 bars |
 
-Modifiers stack freely.
+Modifiers stack freely. Place them at the end of your file.
+
+### Section Block
+
+```
+section intro:
+  only drums and atmosphere
+  fade in over 4 bars
+
+section verse:
+  add chords after 4 bars
+  add bass after 4 bars
+
+section chorus:
+  bring energy up
+
+section outro:
+  fade out everything over 8 bars
+  keep vinyl crackle till end
+```
 
 ---
 
@@ -918,11 +948,11 @@ Derived stores: `hasErrors`, `hasWarnings`, `isPlaying`
 
 | Component | Responsibility |
 |---|---|
-| `Editor.svelte` | CodeMirror 6 — oneDark, line numbers, 400ms debounced parse, status dot, **copy button top-right** |
-| `Controls.svelte` | Play/pause/stop — reads `program` from store, wires all engine calls, **MIDI export button** |
+| `Editor.svelte` | CodeMirror 6 — oneDark, line numbers, 400ms debounced parse, status dot, copy button top-right |
+| `Controls.svelte` | Play/pause/stop — reads `program` from store, wires all engine calls, MIDI export button |
 | `Timeline.svelte` | 16-step grid — decimal beat support, CSS grid equal columns, absolute beat labels |
 | `ErrorPanel.svelte` | Errors (code + line + context + suggestions) and warnings |
-| `DocsDrawer.svelte` | Slide-over docs — sidenav + scrollable content, **updated with all new features** |
+| `DocsDrawer.svelte` | Slide-over docs — sidenav + scrollable content, closes on ESC / backdrop click / ✕ |
 
 ---
 
