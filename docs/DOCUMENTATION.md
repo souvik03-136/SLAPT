@@ -1,7 +1,7 @@
 # SLAPT Documentation
 
 > **S**ounds **L**ike **A** **P**erfect **T**rack  
-
+> *(Sonic Language Audio Programming Tool if your parents are asking)*
 
 ---
 
