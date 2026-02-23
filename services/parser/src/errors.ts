@@ -25,13 +25,19 @@ const GENRE_BPM_RANGES: Record<string, [number, number]> = {
 };
 
 const SCALE_NOTES: Record<string, string[]> = {
-  Am: ["A", "B", "C", "D", "E", "F", "G"],
-  Cm: ["C", "D", "Eb", "F", "G", "Ab", "Bb"],
-  Dm: ["D", "E", "F", "G", "A", "Bb", "C"],
-  Em: ["E", "F#", "G", "A", "B", "C", "D"],
-  C:  ["C", "D", "E", "F", "G", "A", "B"],
-  G:  ["G", "A", "B", "C", "D", "E", "F#"],
-  F:  ["F", "G", "A", "Bb", "C", "D", "E"],
+  // Minor keys
+  Am:  ["A", "B", "C", "D", "E", "F", "G"],
+  Cm:  ["C", "D", "Eb", "F", "G", "Ab", "Bb"],
+  Dm:  ["D", "E", "F", "G", "A", "Bb", "C"],
+  Em:  ["E", "F#", "G", "A", "B", "C", "D"],
+  "F#m": ["F#", "G#", "A", "B", "C#", "D", "E"],
+  Ebm: ["Eb", "F", "Gb", "Ab", "Bb", "B", "Db"],
+  // Major keys
+  C:   ["C", "D", "E", "F", "G", "A", "B"],
+  G:   ["G", "A", "B", "C", "D", "E", "F#"],
+  F:   ["F", "G", "A", "Bb", "C", "D", "E"],
+  Bb:  ["Bb", "C", "D", "Eb", "F", "G", "A"],
+  Ab:  ["Ab", "Bb", "C", "Db", "Eb", "F", "G"],
 };
 
 export function validateTempo(bpm: number, genre?: string): SlaptWarning | null {
@@ -43,7 +49,6 @@ export function validateTempo(bpm: number, genre?: string): SlaptWarning | null 
       code: "TEMPO_GENRE_MISMATCH",
       message: `${bpm} BPM feels off for ${genre}`,
       suggestions: [
-        // FIX: was "60â€"90" (mojibake for em-dash) - now plain ASCII hyphen
         `Typical ${genre} range: ${min}-${max} BPM`,
         `Try ${Math.round((min + max) / 2)} BPM for a classic ${genre} feel`,
         `Or switch genre to match your tempo`,
@@ -72,7 +77,6 @@ export function validateNoteInScale(note: string, key: string): SlaptWarning | n
   const scale = SCALE_NOTES[key];
   if (!scale) return null;
 
-  // FIX: was "â™®" (mojibake for natural sign ♮) - use plain "n" suffix convention instead
   const normalizedNote = note.replace(/n$/, "").trim();
   if (!scale.includes(normalizedNote)) {
     return {
@@ -81,7 +85,6 @@ export function validateNoteInScale(note: string, key: string): SlaptWarning | n
       suggestions: [
         `${key} scale: ${scale.join(", ")}`,
         `Closest in-scale note: ${findClosestNote(normalizedNote, scale)}`,
-        // FIX: was "dissonance â€" intentional?" - plain ASCII dash
         `Using out-of-scale notes creates dissonance - intentional?`,
       ],
     };

@@ -45,24 +45,48 @@ app.post("/api/parse", (req, res) => {
     });
   }
 
-  // ── Validation ─────────────────────────────────────────────────────────────
+  // -- Validation ----------------------------------------------------------
 
-  const genreMatch = code.match(/@genre\s+(\S+)/);
-  const tempoMatch = code.match(/@tempo\s+(\d+(?:\.\d+)?)\s+bpm/i);
-  const genre  = genreMatch?.[1];
-  const tempo  = tempoMatch ? parseFloat(tempoMatch[1]) : undefined;
+  const genreMatch  = code.match(/@genre\s+(\S+)/);
+  const tempoMatch  = code.match(/@tempo\s+(\d+(?:\.\d+)?)\s+bpm/i);
+  const timesigMatch = code.match(/@timesig\s+(\d+)\s*\/\s*(\d+)/i);
+  const genre       = genreMatch?.[1];
+  const tempo       = tempoMatch ? parseFloat(tempoMatch[1]) : undefined;
+  // Parse time sig - supported: 3/4, 4/4, 5/4. Default 4.
+  const timeSigNum  = timesigMatch ? parseInt(timesigMatch[1]) : 4;
+  const timeSigDen  = timesigMatch ? parseInt(timesigMatch[2]) : 4;
+
+  // Validate timesig values
+  if (timesigMatch) {
+    const supportedNums = [3, 4, 5];
+    const supportedDens = [4];
+    if (!supportedNums.includes(timeSigNum) || !supportedDens.includes(timeSigDen)) {
+      errors.push({
+        code: "TIMESIG_UNSUPPORTED",
+        message: `@timesig ${timeSigNum}/${timeSigDen} is not supported yet`,
+        line: undefined,
+        suggestions: [
+          "Supported time signatures: 3/4, 4/4, 5/4",
+          "3/4 gives you waltz feel - beats 1, 2, 3",
+          "5/4 gives you that Radiohead / Dave Brubeck vibe",
+        ],
+      });
+    }
+  }
 
   if (genre && tempo) {
     const tempoWarning = validateTempo(tempo, genre);
     if (tempoWarning) warnings.push(tempoWarning);
   }
 
-  // FIX: validate beats from "kick on", "kick pattern [...]", and "snare on"
+  // validate beats - use actual timeSigNum for range check
+  const effectiveBeats = timeSigNum;
+
   const kickOnMatches = code.matchAll(/kick\s+on\s+([\d.]+(?:\s+and\s+[\d.]+)*)/gi);
   for (const match of kickOnMatches) {
     for (const beatStr of match[1].split(/\s+and\s+/i)) {
       const beat = parseFloat(beatStr.trim());
-      const beatError = validateBeat(beat);
+      const beatError = validateBeat(beat, effectiveBeats);
       if (beatError) errors.push({ ...beatError, context: "kick on" });
     }
   }
@@ -72,7 +96,7 @@ app.post("/api/parse", (req, res) => {
     for (const beatStr of match[1].split(",")) {
       const beat = parseFloat(beatStr.trim());
       if (!isNaN(beat)) {
-        const beatError = validateBeat(beat);
+        const beatError = validateBeat(beat, effectiveBeats);
         if (beatError) errors.push({ ...beatError, context: "kick pattern" });
       }
     }
@@ -82,12 +106,22 @@ app.post("/api/parse", (req, res) => {
   for (const match of snareOnMatches) {
     for (const beatStr of match[1].split(/\s+and\s+/i)) {
       const beat = parseFloat(beatStr.trim());
-      const beatError = validateBeat(beat);
+      const beatError = validateBeat(beat, effectiveBeats);
       if (beatError) errors.push({ ...beatError, context: "snare on" });
     }
   }
 
-  // ── Tokens ─────────────────────────────────────────────────────────────────
+  // validate hihat open on beats
+  const hihatOpenOnMatches = code.matchAll(/hihat\s+open\s+on\s+([\d.]+(?:\s+and\s+[\d.]+)*)/gi);
+  for (const match of hihatOpenOnMatches) {
+    for (const beatStr of match[1].split(/\s+and\s+/i)) {
+      const beat = parseFloat(beatStr.trim());
+      const beatError = validateBeat(beat, effectiveBeats);
+      if (beatError) errors.push({ ...beatError, context: "hihat open on" });
+    }
+  }
+
+  // -- Tokens --------------------------------------------------------------
 
   const tokens = lexResult.tokens.map((t) => ({
     tokenType:   t.tokenType.name,
@@ -96,12 +130,12 @@ app.post("/api/parse", (req, res) => {
     startColumn: t.startColumn,
   }));
 
-  // ── Program ────────────────────────────────────────────────────────────────
+  // -- Program -------------------------------------------------------------
 
   let program = null;
   if (errors.length === 0) {
     try {
-      program = buildProgramFromCode(code);
+      program = buildProgramFromCode(code, timeSigNum);
     } catch (e) {
       // non-fatal
     }
@@ -116,16 +150,19 @@ app.post("/api/parse", (req, res) => {
   });
 });
 
-function buildProgramFromCode(code: string): object {
-  const genreMatch = code.match(/@genre\s+(\S+)/);
-  const tempoMatch = code.match(/@tempo\s+(\d+(?:\.\d+)?)\s+bpm/i);
-  const keyMatch   = code.match(/@key\s+(\S+)/);
+function buildProgramFromCode(code: string, timeSig: number = 4): object {
+  const genreMatch  = code.match(/@genre\s+(\S+)/);
+  const tempoMatch  = code.match(/@tempo\s+(\d+(?:\.\d+)?)\s+bpm/i);
+  const keyMatch    = code.match(/@key\s+(\S+)/);
+  const timesigMatch = code.match(/@timesig\s+(\d+)\s*\/\s*(\d+)/i);
 
   const genre = genreMatch?.[1] ?? "lofi-hiphop";
   const tempo = tempoMatch ? parseFloat(tempoMatch[1]) : 75;
   const key   = keyMatch?.[1] ?? "Am";
+  const timeSigNum = timesigMatch ? parseInt(timesigMatch[1]) : timeSig;
+  const timeSigDen = timesigMatch ? parseInt(timesigMatch[2]) : 4;
 
-  // ── Drums ───────────────────────────────────────────────────────────────────
+  // -- Drums ---------------------------------------------------------------
   let drums = null;
   if (/drums/i.test(code)) {
     const swingMatch = code.match(/swing\((\d+)%\)/);
@@ -157,8 +194,6 @@ function buildProgramFromCode(code: string): object {
         .filter((n) => !isNaN(n));
     }
 
-    // FIX: parse snareVelocity range from code and carry it through
-    // so scheduler uses the user's values instead of hardcoded 0.7/0.9
     let snareVelocity: { min: number; max: number } | null = null;
     const velMatch = code.match(/snare\s+velocity\s+random\((\d+(?:\.\d+)?)\s+to\s+(\d+(?:\.\d+)?)\)/i);
     if (velMatch) {
@@ -171,6 +206,16 @@ function buildProgramFromCode(code: string): object {
     const hihatMatch = code.match(/hihat\s+(?:closed\s+)?(\d+)\s+times/i);
     const hihatCount = hihatMatch ? parseInt(hihatMatch[1]) : 0;
 
+    // Parse hihat open on beats
+    let hihatOpenBeats: number[] = [];
+    const hihatOpenMatch = code.match(/hihat\s+open\s+on\s+([\d.]+(?:\s+and\s+[\d.]+)*)/i);
+    if (hihatOpenMatch) {
+      hihatOpenBeats = hihatOpenMatch[1]
+        .split(/\s+and\s+/i)
+        .map((n) => parseFloat(n.trim()))
+        .filter((n) => !isNaN(n));
+    }
+
     const effects: string[] = [];
     if (/bitcrush/i.test(code)) effects.push("bitcrush");
     if (/compress/i.test(code)) effects.push("compress");
@@ -181,11 +226,13 @@ function buildProgramFromCode(code: string): object {
       snare,
       snareVelocity,
       hihat: { count: hihatCount, type: "closed" as const },
+      hihatOpenBeats,
       effects,
+      timeSig: timeSigNum,
     };
   }
 
-  // ── Chords ──────────────────────────────────────────────────────────────────
+  // -- Chords --------------------------------------------------------------
   let chords = null;
   if (/chords/i.test(code)) {
     const progressionMatch = code.match(/progression\s+([^\n]+)/);
@@ -207,7 +254,7 @@ function buildProgramFromCode(code: string): object {
     };
   }
 
-  // ── Bass ────────────────────────────────────────────────────────────────────
+  // -- Bass ----------------------------------------------------------------
   let bass = null;
   if (/bass/i.test(code)) {
     const soundMatch  = code.match(/sound\s+(\S+)/i);
@@ -219,7 +266,7 @@ function buildProgramFromCode(code: string): object {
     };
   }
 
-  // ── Atmosphere ──────────────────────────────────────────────────────────────
+  // -- Atmosphere ----------------------------------------------------------
   let atmosphere = null;
   if (/atmosphere/i.test(code)) {
     const vinylMatch = code.match(/vinyl\s+crackle\s+at\s+(\d+)%/i);
@@ -230,15 +277,14 @@ function buildProgramFromCode(code: string): object {
     };
   }
 
-  // ── Modifiers ───────────────────────────────────────────────────────────────
+  // -- Modifiers -----------------------------------------------------------
   const modifiers: string[] = [];
   if (/make\s+it\s+dusty/i.test(code))     modifiers.push("dusty");
   if (/make\s+it\s+groovy/i.test(code))    modifiers.push("groovy");
   if (/add\s+some\s+laziness/i.test(code)) modifiers.push("lazy");
   if (/bring\s+energy\s+up/i.test(code))   modifiers.push("energetic");
 
-  // ── Apply modifiers to output ───────────────────────────────────────────────
-  // dusty: bump vinyl crackle to at least 20% even if no atmosphere block written
+  // -- Apply modifiers -----------------------------------------------------
   if (modifiers.includes("dusty")) {
     if (atmosphere) {
       atmosphere.vinylCrackle = Math.max(atmosphere.vinylCrackle, 20);
@@ -249,16 +295,18 @@ function buildProgramFromCode(code: string): object {
       drums.effects.push("bitcrush");
     }
   }
-  // groovy: bump swing to at least 60%
   if (modifiers.includes("groovy") && drums) {
     drums.swing = Math.max(drums.swing, 60);
   }
-  // lazy: bump swing to at least 40%
   if (modifiers.includes("lazy") && drums) {
     drums.swing = Math.max(drums.swing, 40);
   }
 
-  return { genre, tempo, key, drums, chords, bass, atmosphere, modifiers };
+  return {
+    genre, tempo, key,
+    timeSig: { numerator: timeSigNum, denominator: timeSigDen },
+    drums, chords, bass, atmosphere, modifiers,
+  };
 }
 
 app.get("/health", (_req, res) => {

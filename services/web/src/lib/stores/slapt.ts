@@ -1,8 +1,8 @@
 import { writable, derived } from "svelte/store";
 import type { SlaptStore, ParseResult, PlaybackState } from "../../types/slapt";
 
-// FIX: All → replaced with -> so users can actually type this in the editor.
-// FIX: Removed Unicode music symbols that caused mojibake in some environments.
+const STORAGE_KEY = "slapt_code_v1";
+
 const INITIAL_CODE = `@genre lofi-hiphop
 @tempo 75 bpm
 @key Am
@@ -16,6 +16,7 @@ drums with swing(60%):
   snare on 2 and 4
   snare velocity random(0.7 to 0.9)
   hihat closed 8 times
+  hihat open on 4
   apply bitcrush(10bit)
   compress heavily
 
@@ -45,9 +46,32 @@ section outro:
 
 make it dusty`;
 
+// Load from localStorage if available (browser only)
+function loadSavedCode(): string {
+  if (typeof window === "undefined") return INITIAL_CODE;
+  try {
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    return saved ?? INITIAL_CODE;
+  } catch {
+    return INITIAL_CODE;
+  }
+}
+
+// Persist to localStorage (browser only, swallows errors silently)
+function saveCode(code: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, code);
+  } catch {
+    // Storage might be full or disabled — ignore silently
+  }
+}
+
 function createSlaptStore() {
+  const savedCode = loadSavedCode();
+
   const { subscribe, update } = writable<SlaptStore>({
-    code: INITIAL_CODE,
+    code: savedCode,
     parseResult: null,
     playbackState: "stopped",
     tempo: 75,
@@ -60,6 +84,7 @@ function createSlaptStore() {
   return {
     subscribe,
     setCode: (code: string) => {
+      saveCode(code);
       const genreMatch = code.match(/@genre\s+(\S+)/);
       const keyMatch   = code.match(/@key\s+(\S+)/);
       const tempoMatch = code.match(/@tempo\s+(\d+(?:\.\d+)?)\s+bpm/i);
@@ -77,6 +102,10 @@ function createSlaptStore() {
     setGenre:         (genre: string)                => update((s) => ({ ...s, genre })),
     setCurrentBar:    (currentBar: number)           => update((s) => ({ ...s, currentBar })),
     setLoading:       (isLoading: boolean)           => update((s) => ({ ...s, isLoading })),
+    resetCode: () => {
+      saveCode(INITIAL_CODE);
+      update((s) => ({ ...s, code: INITIAL_CODE }));
+    },
   };
 }
 

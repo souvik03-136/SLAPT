@@ -33,9 +33,10 @@ Meanwhile us: *"bro what?"*
 We said "nah" to cryptic symbols and built music programming that actually makes sense:
 
 ```
-play kick every beat
-play snare on beats 2 and 4
-play hihat 8 times per bar with swing
+drums:
+  kick on 1 and 3
+  snare on 2 and 4
+  hihat 8 times
 ```
 
 Read that. You understood it immediately. That's the whole point.
@@ -120,9 +121,11 @@ drums with swing(60%):
   snare on 2 and 4
   snare velocity random(0.7 to 0.9)
   hihat closed 8 times
+  hihat open on 4
   apply bitcrush(10bit)
   compress heavily
-  make it dusty
+
+make it dusty
 ```
 
 Same language, different power level. No sudden difficulty spike.
@@ -137,11 +140,10 @@ kick on 5
 
    Suggestions:
    - Beats go from 1 to 4 in your current time signature
-   - Try @timesig 5/4 if you want 5 beats per bar
    - Did you mean beat 1?
 ```
 
-Not "SyntaxError: line 4" and a middle finger. You get options, context, and what went wrong.
+Not "SyntaxError: line 4" and a middle finger. You get the exact line, the context (kick on / kick pattern / snare on / hihat open on), and suggestions for what to try instead.
 
 ### 3. Genre Awareness Built In
 
@@ -150,14 +152,12 @@ Not "SyntaxError: line 4" and a middle finger. You get options, context, and wha
 @tempo 72 bpm
 
 // SLAPT already knows:
-// - Add vinyl crackle
-// - Use that chill swing
-// - Warm, dusty samples
-// - Jazz-influenced chords
-// - Laid-back timing
+// - Typical BPM range (60-90)
+// - Warn if tempo feels off for the genre
+// - Scale validation for your key
 ```
 
-Type `lofi-hiphop` and it sets the whole vibe.
+Set the genre, get smart warnings. Supported: `lofi-hiphop`, `boom-bap`, `house`, `techno`, `dnb`, `ambient`, `trap`.
 
 ### 4. The "Make It" Commands
 
@@ -167,13 +167,62 @@ drums:
   snare on 2 and 4
   hihat 8 times
 
-make it groovy    // adds swing, humanization, ghost notes
-make it dusty     // bitcrush, vinyl crackle, rolled-off highs
-add some laziness // pushes timing back, reduces velocity
-bring energy up   // increases velocity, adds fills
+make it groovy    // swing >= 60%, humanization
+make it dusty     // bitcrush + vinyl crackle auto-added
+add some laziness // pushed-back timing, lower velocity
+bring energy up   // higher velocity, drum fills
 ```
 
-One line. Entire vibe shift.
+One line. Entire vibe shift. Stack them freely.
+
+### 5. Synthesized Atmosphere — No Samples
+
+```
+atmosphere:
+  vinyl crackle at 20% volume      // 2-layer noise synthesis
+  rain sounds softly in background // 3-layer noise synthesis
+  tape wobble subtle               // BPM flutter via sine curve
+```
+
+Everything is generated in the browser. No audio files. No downloads.
+
+### 6. Open Hihat On Specific Beats
+
+```
+drums with swing(60%):
+  hihat closed 8 times
+  hihat open on 4
+```
+
+Place an open hihat on any beat you want. The closed grid automatically skips that position — no double-hit, no overlap. Standard drum machine behaviour, no config needed.
+
+### 7. Odd Time Signatures
+
+```
+@timesig 3/4   // waltz / jazz waltz
+@timesig 5/4   // Dave Brubeck / Radiohead territory
+```
+
+Beat validation adjusts automatically. Use beats 1–3 in 3/4, beats 1–5 in 5/4. SLAPT tells you if you go out of range.
+
+### 8. More Keys
+
+```
+@key F#m   // ethereal, floaty — great for ambient
+@key Bb    // jazzy, soulful
+@key Ab    // rich, lush — neo-soul
+@key Ebm   // deep, heavy — suits trap / dnb
+```
+
+11 keys total. Scale validation works across all of them.
+
+### 9. MIDI Export
+
+Click **MIDI** in the top bar. Downloads a standard `.mid` file with separate tracks for drums (GM channel 10), chords, and bass. Drop it straight into Ableton, Logic, FL Studio, GarageBand — any DAW.
+
+### 10. Your Code Never Disappears
+
+Code is auto-saved to `localStorage` as you type. Refresh, close the tab, come back tomorrow — your track is still there.
 
 ---
 
@@ -187,10 +236,9 @@ One line. Entire vibe shift.
 - You've tried other tools and rage-quit
 
 **Maybe stick to your DAW if:**
-- You need pixel-perfect MIDI editing (for now)
+- You need pixel-perfect MIDI editing
 - You're already fluent in TidalCycles and love it
 - You prefer clicking buttons over typing
-- You need every VST plugin under the sun
 
 ---
 
@@ -203,7 +251,7 @@ git clone https://github.com/souvik03-136/slapt
 cd slapt
 ```
 
-The repo ships with a `.env` file at the root. Open it and check the defaults:
+The repo ships with a `.env` file at the root:
 
 ```env
 # .env (root - single config for everything)
@@ -214,7 +262,7 @@ PARSER_URL=http://parser:3001
 NODE_ENV=production
 ```
 
-You almost never need to change these. Only edit if port 80 is already taken on your machine.
+Only edit if port 80 is already taken on your machine.
 
 ### 2. Run with Docker
 
@@ -258,6 +306,7 @@ drums with swing(60%):
   snare on 2 and 4
   snare velocity random(0.7 to 0.9)
   hihat closed 8 times
+  hihat open on 4
   apply bitcrush(10bit)
   compress heavily
 
@@ -271,6 +320,7 @@ chords using rhodes piano:
 bass walking the roots:
   follow chord progression
   sound mellow
+  filter warm
 
 section intro:
   only drums and atmosphere
@@ -290,45 +340,154 @@ section outro:
 make it dusty
 ```
 
-> Note: chord progressions use `->` (two characters you can type on any keyboard).
+### The Jazz Waltz
+
+```
+@genre lofi-hiphop
+@tempo 80 bpm
+@key F#m
+@timesig 3/4
+
+atmosphere:
+  vinyl crackle at 15% volume
+
+drums with swing(55%):
+  kick on 1
+  snare on 2
+  hihat closed 6 times
+  hihat open on 3
+
+chords using rhodes piano:
+  progression Am7 -> Fmaj7 -> Em
+  voicing spread
+  reverb(medium, dreamy)
+
+bass walking the roots:
+  follow chord progression
+  sound mellow
+
+make it dusty
+```
+
+### The Five-Beat Weirdo
+
+```
+@genre lofi-hiphop
+@tempo 78 bpm
+@key Bb
+@timesig 5/4
+
+drums with swing(40%):
+  kick on 1 and 4
+  snare on 2 and 5
+  hihat closed 10 times
+  hihat open on 3
+
+atmosphere:
+  tape wobble subtle
+  vinyl crackle at 10% volume
+
+chords using rhodes piano:
+  progression Dm7 -> Am7 -> Cmaj7
+  reverb(medium, dreamy)
+
+add some laziness
+```
+
+> Note: chord progressions use `->` (two ASCII characters — works on every keyboard).
 
 ---
 
-## The SLAPT Philosophy
+## What's Built
 
-**Write Music Like You Feel It** -> If you can describe it, you can code it.
+### Language
+- `@genre`, `@tempo`, `@key` directives
+- `@timesig` directive — 3/4, 4/4, 5/4; beat validation adjusts automatically
+- `drums:` block — kick pattern, kick on, snare on, snare velocity, hihat closed N times, **hihat open on specific beats**, bitcrush, compress, swing
+- `chords using rhodes piano:` block — progression, voicing, reverb, tremolo
+- `bass walking the roots:` block — follow chord progression, sound, filter
+- `atmosphere:` block — vinyl crackle, rain, tape wobble (all synthesized, no samples)
+- `section:` blocks — intro, verse, chorus, outro with fade in/out
+- Global modifiers — `make it groovy`, `make it dusty`, `add some laziness`, `bring energy up`
 
-**Mistakes Are Features** -> In lofi, imperfection is the aesthetic. Your "mistakes" might be the best part.
+### Audio Engine
+- Real-time synthesis via Tone.js — no samples, no audio files
+- Separate signal chains per instrument (kick, snare, hihat, chords, bass)
+- Independent compressors and bitcrushers per instrument — no bleed
+- **Open hihat**: longer gate on specific beats, closed grid auto-skips those positions
+- Chord voicings for Am7, Fmaj7, Dm7, E7, Cmaj7, Gmaj7, Am, Dm, Em
+- Bass root notes mapped per chord, one octave below
+- Vinyl crackle: 2-layer (surface hum + random pops)
+- Rain: 3-layer brown/pink noise blend
+- Tape wobble: sine-curve BPM nudge via setInterval
 
-**No Gatekeeping** -> Free, approachable, welcomes everyone.
+### MIDI Export
+- Zero-dependency pure-TypeScript MIDI type-1 builder
+- Drums on GM channel 10 (kick 36, snare 38, closed hihat 42, open hihat 46)
+- Chords on channel 1, bass on channel 2 — 4 bars exported
+- Button disabled while parse errors exist
 
-**Progressive Complexity** -> Start simple. Add layers as you learn. Never hit a wall.
+### Validation & Errors
+- `BEAT_OUT_OF_RANGE` — checked for kick on, kick pattern, snare on, **hihat open on**; range adjusts per `@timesig`
+- `TIMESIG_UNSUPPORTED` — fires when a time sig other than 3/4, 4/4, 5/4 is used
+- `TEMPO_GENRE_MISMATCH` — warning when BPM is outside genre's typical range
+- `NOTE_OUT_OF_SCALE` — warning when chord note is outside declared key
+- `LEXER_ERROR` / `PARSE_ERROR` — with line number and character offset
+
+### Editor & UI
+- CodeMirror 6 with oneDark theme and line numbers
+- **Copy button** — top-right of editor, copies full code to clipboard with checkmark feedback
+- 400ms debounced parse — status dot shows valid/error state
+- **Auto-save** — code persisted to `localStorage` as you type, survives refresh
+- 16-step drum timeline visualization
+- Error panel with code, line, context, and suggestions
+- **MIDI export button** in top bar — downloads `.mid`, disabled on errors
+- Slide-over docs panel — full language reference accessible in-app
+- Genre template buttons and modifier shortcuts in sidebar
+
+### Supported Genres
+`lofi-hiphop` · `boom-bap` · `house` · `techno` · `dnb` · `ambient` · `trap`
+
+### Supported Keys
+`Am` · `Cm` · `Dm` · `Em` · `F#m` · `Ebm` · `C` · `G` · `F` · `Bb` · `Ab`
+
+### Supported Time Signatures
+`3/4` · `4/4` (default) · `5/4`
+
 
 ---
 
 ## What's Next?
 
-### Phase 1 (Now): Lo-fi and Hip-Hop
-- [x] Lofi hip-hop
-- [x] Boom-bap
-- [x] Core drum programming
-- [x] Basic effects and modifiers
-- [x] Atmosphere audio (vinyl crackle, rain, tape wobble)
-- [x] Velocity humanization
+### Phase 1 (Now): Foundation
+- [x] Core drum programming (kick, snare, hihat, swing, velocity)
+- [x] Open hihat on specific beats (`hihat open on 4`)
+- [x] Chord block with rhodes piano voicings
+- [x] Bass block following chord roots
+- [x] Atmosphere synthesis (vinyl crackle, rain, tape wobble)
+- [x] Global modifiers (groovy, dusty, lazy, energetic)
+- [x] Sections (intro, verse, chorus, outro)
+- [x] Genre-aware validation (lofi-hiphop, boom-bap, house, techno, dnb, ambient, trap)
+- [x] Key-aware note validation (Am, Cm, Dm, Em, F#m, Ebm, C, G, F, Bb, Ab)
+- [x] `@timesig` directive — 3/4, 4/4, 5/4 with automatic beat range validation
+- [x] MIDI export — download `.mid` for any DAW
+- [x] Copy code button in editor
+- [x] Auto-save to localStorage — code persists through refresh
+- [x] Helpful error messages with context and suggestions
+- [x] In-app documentation panel
 - [x] GitHub releases with one-click install
 
-### Phase 2 (Soon): Electronic Expansion
-- [ ] House and Techno
-- [ ] Ambient and Downtempo
-- [ ] Trap and Drill
-- [ ] VST plugin support
+### Phase 2 (Soon): More Expression
+- [ ] More chord voicings and instruments beyond rhodes piano
+- [ ] More atmosphere layers (custom noise types)
+- [ ] More genre templates
 
 ### Phase 3 (Future): Everything Else
 - [ ] DnB, Jungle, Breakbeat
 - [ ] Jazz, Funk, Soul
-- [ ] Experimental and Generative
 - [ ] Live performance mode
 - [ ] Collaboration features
+- [ ] Generative/randomized patterns
 
 ---
 
@@ -348,7 +507,7 @@ Check out [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## Community Tracks
 
-People are making things with SLAPT. Come see what's possible -> or add yours.
+People are making things with SLAPT. Come see what's possible — or add yours.
 
 - **Browse tracks:** [TRACKS.md](./TRACKS.md)
 - **Quick share (no PR):** [Discussions → Show & Tell](https://github.com/souvik03-136/slapt/discussions)
@@ -360,7 +519,6 @@ People are making things with SLAPT. Come see what's possible -> or add yours.
 
 - [Releases](https://github.com/souvik03-136/slapt/releases) -> download the latest version
 - [Documentation](./docs/DOCUMENTATION.md) -> architecture, language reference, API
-- [Tutorials](./docs/TUTORIALS.md) -> 10 step-by-step guides from first beat to full arrangement
 - [Task Commands](./TASKS.md) -> all `task` commands for Docker, dev, tests, build, and cleanup
 - [Tests](./tests) -> lexer, error validation, and API integration tests
 - [Contributing](./CONTRIBUTING.md) -> how to report bugs, add genres, submit PRs
@@ -372,14 +530,13 @@ People are making things with SLAPT. Come see what's possible -> or add yours.
 
 ## License
 
-Non-Commercial -> Free to use, share, and build on. Just don't sell it or use it to make money.
+MIT — Free to use, modify, and distribute.
 
 ---
 
 ## Credits
 
 Inspired by TidalCycles, Strudel, Sonic Pi, and every producer who shares knowledge freely.
-J Dilla and Nujabes for the whole lofi aesthetic.
 
 ---
 

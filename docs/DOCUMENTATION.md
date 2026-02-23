@@ -37,12 +37,13 @@ SLAPT runs as **three Docker services** orchestrated via `docker-compose.yml`. T
 graph TB
     subgraph BROWSER["🌐 User Browser"]
         subgraph WEBAPP["SvelteKit Web App :3000"]
-            EDITOR["📝 Editor.svelte\nCodeMirror 6"]
-            CONTROLS["▶️ Controls.svelte\nPlay / Pause / Stop"]
+            EDITOR["📝 Editor.svelte\nCodeMirror 6 + Copy Button"]
+            CONTROLS["▶️ Controls.svelte\nPlay / Pause / Stop / MIDI Export"]
             TIMELINE["🎛️ Timeline.svelte\n16-step Grid"]
             ERRORPANEL["⚠️ ErrorPanel.svelte\nErrors + Warnings"]
-            STORE["📦 slaptStore\nSvelte Writable Store"]
+            STORE["📦 slaptStore\nSvelte Writable Store\n+ localStorage auto-save"]
             AUDIO["🔊 Audio Engine\nTone.js"]
+            MIDI["🎹 MIDI Export\npure-TS builder"]
         end
     end
 
@@ -62,7 +63,9 @@ graph TB
     STORE --> TIMELINE
     STORE --> ERRORPANEL
     CONTROLS --> AUDIO
+    CONTROLS --> MIDI
     AUDIO -->|"bar count"| STORE
+    STORE -->|"persist on write\nload on mount"| LS["localStorage\nslapt_code_v1"]
 ```
 
 ---
@@ -74,28 +77,31 @@ flowchart TD
     INPUT["Raw SLAPT Code\nstring from POST body"]
 
     subgraph LEXER["lexer.ts — Chevrotain Lexer"]
-        L1["80+ Token Definitions\nKeywords: genre tempo drums chords...\nSymbols: At  Colon  Arrow\nLiterals: NumberLiteral  StringLiteral\nSkipped: Whitespace  Newline  LineComment"]
+        L1["80+ Token Definitions\nKeywords: genre tempo drums chords timesig...\nSymbols: At  Colon  Arrow  Slash\nLiterals: NumberLiteral  StringLiteral\nSkipped: Whitespace  Newline  LineComment"]
     end
 
     subgraph CSTPARSER["parser.ts — Chevrotain CST Parser"]
         P1["Grammar Rules\nprogram → directive\n       → drumBlock\n       → chordBlock\n       → bassBlock\n       → atmosphereBlock\n       → sectionBlock\n       → globalModifier"]
+        P2["timesigDirective\n@timesig N/N"]
+        P3["hihatPattern\nhihat open on N and ...\nhihat closed N times\nhihat occasionally"]
     end
 
     subgraph INTERP["interpreter.ts — AST Walker"]
-        I1["CST → SlaptProgram\ngenre  tempo  key\ndrums  chords  bass\natmosphere  sections  modifiers"]
-        I2["Apply Modifiers\ngroovy   → swing ≥ 60%\ndusty    → bitcrush + vinylCrackle ≥ 20%\nlazy     → swing ≥ 40%\nenergeic → ghost notes"]
+        I1["CST → SlaptProgram\ngenre  tempo  key  timeSig\ndrums  chords  bass\natmosphere  sections  modifiers"]
+        I2["Apply Modifiers\ngroovy   → swing ≥ 60%\ndusty    → bitcrush + vinylCrackle ≥ 20%\nlazy     → swing ≥ 40%\nenergetic → ghost notes"]
     end
 
     subgraph VALIDATION["errors.ts — Validation Layer"]
         V1["validateTempo\nbpm  genre\n→ TEMPO_GENRE_MISMATCH warning"]
-        V2["validateBeat\nbeat  timeSig\n→ BEAT_OUT_OF_RANGE error\nchecks kick on  kick pattern  snare on"]
-        V3["validateNoteInScale\nnote  key\n→ NOTE_OUT_OF_SCALE warning"]
+        V2["validateBeat\nbeat  timeSig (3/4/5)\n→ BEAT_OUT_OF_RANGE error\nchecks: kick on  kick pattern\n        snare on  hihat open on"]
+        V3["validateNoteInScale\nnote  key (11 keys)\n→ NOTE_OUT_OF_SCALE warning"]
+        V4["validateTimesig\nnumerator  denominator\n→ TIMESIG_UNSUPPORTED error\nif not 3/4  4/4  5/4"]
     end
 
-    RESPONSE["index.ts — Response\ntokens  errors  warnings  success  program"]
+    RESPONSE["index.ts — Response\ntokens  errors  warnings  success  program\n+ timeSig  hihatOpenBeats  hihat.type"]
 
     INPUT --> LEXER --> CSTPARSER --> INTERP --> I2 --> VALIDATION
-    V1 & V2 & V3 --> RESPONSE
+    V1 & V2 & V3 & V4 --> RESPONSE
 ```
 
 ---
@@ -111,7 +117,7 @@ flowchart LR
     subgraph SYNTHS["effects.ts — buildSynthRack"]
         KICK_S["MembraneSynth\nkick"]
         SNARE_S["NoiseSynth\nsnare"]
-        HIHAT_S["MetalSynth\nhihat"]
+        HIHAT_S["MetalSynth\nhihat closed + open"]
         CHORD_S["PolySynth\nchords"]
         BASS_S["Synth\nbass"]
     end
@@ -131,9 +137,35 @@ flowchart LR
 
     PROG --> KICK_S --> KICK_BC --> KICK_C --> DEST
     PROG --> SNARE_S --> SNARE_F --> SNARE_BC --> SNARE_C --> DEST
-    PROG --> HIHAT_S --> DEST
+    PROG --> HIHAT_S -->|"closed: 16n gate\nopen: 8n gate, higher vel"| DEST
     PROG --> CHORD_S --> TREMOLO --> REVERB --> DEST
     PROG --> BASS_S --> BASS_F --> DEST
+```
+
+### Open Hihat Logic
+
+```mermaid
+flowchart TD
+    HO["hihatOpenBeats []\nfrom program.drums"]
+    HC["hihat.count N\nfrom program.drums"]
+
+    BUILD["Build events array"]
+
+    GRID["Closed grid\nfor i in 0..count\n  beat = 1 + i * (timeSig / count)\n  beatKey = round(beat * 100)"]
+
+    SKIP{"beatKey in\nopenBeatSet?"}
+
+    ADD_C["push hihat_closed\nat beat"]
+    ADD_O["push hihat_open\nat beat\n(longer gate, higher vel)"]
+    SKIP_C["skip — open hat\ncovers this position"]
+
+    HO --> BUILD
+    HC --> BUILD
+    BUILD --> GRID
+    GRID --> SKIP
+    SKIP -->|No| ADD_C
+    SKIP -->|Yes| SKIP_C
+    HO --> ADD_O
 ```
 
 ### Atmosphere Routing
@@ -176,6 +208,29 @@ flowchart LR
     WI -->|"modulates BPM"| DEST
 ```
 
+### MIDI Export Pipeline
+
+```mermaid
+flowchart LR
+    PROG["SlaptProgram\nfrom store"]
+
+    subgraph MIDI["midi/export.ts"]
+        H["MThd header\nformat 1  N tracks  PPQN=480"]
+        T0["Track 0\nSet Tempo meta\nTime Sig meta"]
+        TD["Drum Track\nch 10 GM\nkick 36  snare 38\nhihat_c 42  hihat_o 46\nvelocity from snareVelocity"]
+        TC["Chord Track\nch 1\nChord voicings\n4 bars × progression"]
+        TB["Bass Track\nch 2\nRoot notes\n4 bars × progression"]
+    end
+
+    DL["Blob download\nslapt-genre-Nbpm.mid"]
+
+    PROG --> H --> T0
+    PROG --> TD
+    PROG --> TC
+    PROG --> TB
+    T0 & TD & TC & TB --> DL
+```
+
 ---
 
 ## Frontend State Flow
@@ -183,13 +238,19 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     participant U as User
+    participant LS as localStorage
     participant E as Editor.svelte
     participant S as slaptStore
     participant P as POST /api/parse
     participant C as Controls.svelte
     participant A as Audio Engine
+    participant M as MIDI Export
+
+    note over LS,S: On app load
+    LS-->>S: loadSavedCode() → setCode()
 
     U->>E: types SLAPT code
+    E->>S: setCode(code) → saveCode(code) → LS
     E->>E: debounce 400ms
     E->>P: fetch POST /api/parse
     P-->>S: setParseResult(result)
@@ -197,15 +258,24 @@ sequenceDiagram
     S-->>E: ErrorPanel re-renders
     S-->>E: Timeline re-renders
 
+    U->>E: clicks Copy icon
+    E->>E: navigator.clipboard.writeText(code)
+    E->>E: show checkmark 1.8s
+
     U->>C: clicks Play
     C->>A: initAudio()
-    C->>A: playDrums(drums, tempo)
+    C->>A: playDrums(drums, tempo)  [includes hihatOpenBeats]
     C->>A: playChords(progression, instrument, tempo)
     C->>A: playBass(progression, tempo)
     C->>A: playAtmosphere(atmosphere)
     C->>A: startPlayback()
     A-->>S: setCurrentBar(bar) every 1 bar
     S-->>C: bar counter display updates
+
+    U->>C: clicks MIDI button
+    C->>M: downloadMidi(program, filename)
+    M->>M: buildTrack × 3 + MThd header
+    M->>U: browser downloads .mid file
 
     U->>C: clicks Stop
     C->>A: stopPlayback()
@@ -317,18 +387,27 @@ SLAPT/
 │   │       ├── index.ts              # Express server entry point:
 │   │       │                         #   POST /api/parse — lex, parse, validate, build program
 │   │       │                         #   GET /health
-│   │       │                         #   Beat validation for kick on / kick pattern / snare on
+│   │       │                         #   Beat validation for kick on / kick pattern /
+│   │       │                         #     snare on / hihat open on (all 4 sources checked)
+│   │       │                         #   @timesig parsing → TIMESIG_UNSUPPORTED error
+│   │       │                         #   effectiveBeats passed to all validateBeat calls
+│   │       │                         #   hihatOpenBeats extracted into program output
 │   │       ├── lexer.ts              # All Chevrotain token definitions (80+ tokens):
+│   │       │                         #   NEW: Timesig keyword token
+│   │       │                         #   NEW: Slash token (for N/N syntax)
 │   │       │                         #   keywords, symbols, literals, skipped tokens
 │   │       │                         #   longer_alt: Identifier so keywords take priority
 │   │       ├── parser.ts             # Chevrotain CST grammar rules:
-│   │       │                         #   program, all block types, all sub-rules
+│   │       │                         #   NEW: timesigDirective rule (@timesig N/N)
+│   │       │                         #   NEW: hihatPattern updated — hihat open on N and ...
+│   │       │                         #     as distinct alternative before hihat N times
 │   │       ├── ast.ts                # TypeScript AST node type definitions:
 │   │       │                         #   Program, DrumBlock, ChordBlock, BassBlock,
 │   │       │                         #   AtmosphereBlock, SectionBlock, ModifierStatement
 │   │       ├── interpreter.ts        # Walks CST → SlaptProgram output object,
 │   │       │                         #   applies modifier side-effects (swing/bitcrush/crackle)
-│   │       └── errors.ts             # validateTempo, validateBeat, validateNoteInScale,
+│   │       └── errors.ts             # validateTempo, validateBeat, validateNoteInScale
+│   │                                 #   NEW keys: F#m, Ebm, Bb, Ab (11 total)
 │   │                                 #   GENRE_BPM_RANGES table, SCALE_NOTES table
 │   │
 │   └── web/
@@ -344,6 +423,9 @@ SLAPT/
 │           │   └── slapt.d.ts        # Shared interfaces: ParseResult, SlaptProgram,
 │           │                         #   DrumProgramOutput, ChordProgramOutput,
 │           │                         #   AtmosphereProgramOutput, SlaptStore, PlaybackState
+│           │                         #   NEW: TimeSig interface
+│           │                         #   NEW: hihatOpenBeats field on DrumProgramOutput
+│           │                         #   NEW: timeSig field on SlaptProgram
 │           │
 │           ├── lib/
 │           │   ├── api/
@@ -355,9 +437,13 @@ SLAPT/
 │           │   │   │                 #   playAtmosphere, startPlayback, stopPlayback,
 │           │   │   │                 #   pausePlayback, setTempo, cleanup,
 │           │   │   │                 #   setBarChangeCallback
+│           │   │   │                 #   UPDATED: passes hihatOpenBeats through to scheduler
 │           │   │   │
 │           │   │   ├── scheduler.ts  # Tone.js scheduling:
-│           │   │   │                 #   scheduleDrums — Tone.Part, swing, velocity
+│           │   │   │                 #   NEW: DrumPattern.hihatOpenBeats field
+│           │   │   │                 #   NEW: closed grid skips open-hihat beat positions
+│           │   │   │                 #     (Set-based lookup, float-safe × 100 rounding)
+│           │   │   │                 #   NEW: hihat_open event → 8n gate, higher velocity
 │           │   │   │                 #   scheduleChords — CHORD_VOICINGS map
 │           │   │   │                 #   scheduleBass — BASS_ROOTS map
 │           │   │   │                 #   scheduleAtmosphere — vinyl (2-layer) + rain (3-layer)
@@ -371,45 +457,80 @@ SLAPT/
 │           │   │                     #   applyDrumEffects — per-instrument bitcrusher routing
 │           │   │                     #   disposeEffectRack, disposeSynthRack
 │           │   │
+│           │   ├── midi/
+│           │   │   └── export.ts     # NEW FILE — pure-TypeScript MIDI builder:
+│           │   │                     #   exportMidi(program, bars) → Uint8Array
+│           │   │                     #   downloadMidi(program, filename) → browser download
+│           │   │                     #   PPQN = 480, format type 1 (multi-track)
+│           │   │                     #   Track 0: tempo + time sig meta events
+│           │   │                     #   Drum track: ch 10 GM
+│           │   │                     #     kick=36, snare=38, hihat_c=42, hihat_o=46
+│           │   │                     #   Chord track: ch 1, CHORD_MIDI voicings map
+│           │   │                     #   Bass track: ch 2, BASS_ROOTS map
+│           │   │                     #   Velocity from parsed snareVelocity range
+│           │   │                     #   varLen(), uint16BE(), uint32BE() helpers
+│           │   │
 │           │   ├── components/
 │           │   │   ├── Editor.svelte       # CodeMirror 6: oneDark, line numbers,
 │           │   │   │                       #   400ms debounced parse, status dot
+│           │   │   │                       #   NEW: copy-to-clipboard button top-right
+│           │   │   │                       #     SVG icon, 1.8s checkmark feedback
 │           │   │   ├── Controls.svelte     # Play/pause/stop: reads program from store,
 │           │   │   │                       #   wires all engine calls + snareVelocity + atmos
+│           │   │   │                       #   NEW: MIDI export button (disabled on errors)
+│           │   │   │                       #     calls downloadMidi(), checkmark feedback
+│           │   │   │                       #   UPDATED: passes hihatOpenBeats to playDrums
 │           │   │   ├── Timeline.svelte     # 16-step grid: decimal beat → step conversion,
 │           │   │   │                       #   CSS grid columns, absolute beat label overlays
 │           │   │   ├── ErrorPanel.svelte   # Errors + warnings: code, line, context,
 │           │   │   │                       #   suggestions, collapsible sections
-│           │   │   └── DocsDrawer.svelte   # NEW — slide-over docs panel:
+│           │   │   └── DocsDrawer.svelte   # Slide-over docs panel:
 │           │   │                           #   triggered by Docs button in topbar,
 │           │   │                           #   sidenav + scrollable content sections,
-│           │   │                           #   full language reference + examples,
+│           │   │                           #   NEW sections: Time Signatures, MIDI Export,
+│           │   │                           #     Auto-Save
+│           │   │                           #   UPDATED: Keys table (11 entries),
+│           │   │                           #     Drums section (hihat open on documented),
+│           │   │                           #     Cheat sheet, Directives table
+│           │   │                           #   NEW examples: 3/4 Waltz, 5/4 Odd Time
 │           │   │                           #   closes on ESC / backdrop click / ✕ button
 │           │   │
 │           │   └── stores/
 │           │       └── slapt.ts      # Svelte writable store:
+│           │                         #   NEW: loadSavedCode() — reads localStorage on init
+│           │                         #   NEW: saveCode() — writes on every setCode() call
+│           │                         #   NEW: resetCode() — restores INITIAL_CODE + saves
+│           │                         #   UPDATED: INITIAL_CODE includes hihat open on 4
+│           │                         #   Storage key: "slapt_code_v1"
+│           │                         #   SSR-safe: typeof window checks throughout
 │           │                         #   state — code, parseResult, playbackState,
 │           │                         #     tempo, genre, key, currentBar, isLoading
 │           │                         #   setCode extracts genre/key/tempo via regex
 │           │                         #   derived — hasErrors, hasWarnings, isPlaying
-│           │                         #   INITIAL_CODE — full example lofi-hiphop track
 │           │
 │           └── routes/
 │               ├── +layout.svelte    # Root layout: imports app.css
-│               └── +page.svelte      # Main page: topbar (includes Docs button that
-│                                     #   sets docsOpen = true), sidebar (genre templates +
-│                                     #   quick modifiers), editor, resizable bottom panels,
+│               └── +page.svelte      # Main page: topbar (Docs button, MIDI button),
+│                                     #   sidebar (genre templates + quick modifiers),
+│                                     #   editor, resizable bottom panels,
 │                                     #   mounts <DocsDrawer bind:open={docsOpen} />
 │
 └── tests/
     ├── tsconfig.json                 # baseUrl ".." so parser/src imports resolve
     ├── lexer.test.ts                 # Unit: all token types, decimal beats, arrows,
     │                                 #   atmosphere, modifiers, comment skipping
+    │                                 #   NEW: timesig token, slash token, open/on tokens
     ├── errors.test.ts                # Unit: validateTempo, validateBeat,
     │                                 #   validateNoteInScale — full edge case coverage
+    │                                 #   NEW: hihat open on beat validation
+    │                                 #   NEW: timesig-adjusted beat ranges (3/4, 5/4)
+    │                                 #   NEW: F#m, Bb, Ab, Ebm scale note tests
     └── api.test.ts                   # Integration: /health, success, token shapes,
                                       #   warnings, errors, 400 bad request cases
+                                      #   NEW: timeSig field in program output
+                                      #   NEW: hihatOpenBeats field in drums output
 ```
+
 ---
 
 ## Running SLAPT
@@ -496,13 +617,16 @@ task clean:all    # remove artifacts + volumes
     "genre": "lofi-hiphop",
     "tempo": 75,
     "key": "Am",
+    "timeSig": { "numerator": 4, "denominator": 4 },
     "drums": {
       "swing": 60,
       "kick": [1, 2.75, 3],
       "snare": [2, 4],
       "snareVelocity": { "min": 0.7, "max": 0.9 },
       "hihat": { "count": 8, "type": "closed" },
-      "effects": ["bitcrush", "compress"]
+      "hihatOpenBeats": [4],
+      "effects": ["bitcrush", "compress"],
+      "timeSig": 4
     },
     "chords": {
       "instrument": "piano",
@@ -520,6 +644,8 @@ task clean:all    # remove artifacts + volumes
 
 - `success: true` when `errors` is empty. Warnings do not affect `success`.
 - `program` is `null` when there are parse errors.
+- `timeSig` defaults to `{ numerator: 4, denominator: 4 }` when `@timesig` is not written.
+- `hihatOpenBeats` is an empty array `[]` when `hihat open on` is not written.
 
 ### `GET /health`
 
@@ -545,25 +671,38 @@ task clean:all    # remove artifacts + volumes
 
 ### Beat Out of Range
 
-Fires an **error** when a beat exceeds the time signature (default 4/4). Validated across all three sources:
+Fires an **error** when a beat exceeds the time signature. The range is determined by `@timesig` (default 4/4). Validated across all four sources:
 
 ```
 kick pattern [1, 2.75, 5]  →  BEAT_OUT_OF_RANGE  (context: "kick pattern")
 snare on 2 and 6           →  BEAT_OUT_OF_RANGE  (context: "snare on")
 kick on 5                  →  BEAT_OUT_OF_RANGE  (context: "kick on")
+hihat open on 4            →  BEAT_OUT_OF_RANGE  (context: "hihat open on")  [in 3/4]
+```
+
+### Timesig Unsupported
+
+Fires an **error** when `@timesig` is used with a value other than 3/4, 4/4, or 5/4:
+
+```
+@timesig 7/8  →  TIMESIG_UNSUPPORTED
 ```
 
 ### Note Out of Scale
 
-| Key | Scale Notes |
-|---|---|
-| Am | A B C D E F G |
-| Cm | C D Eb F G Ab Bb |
-| Dm | D E F G A Bb C |
-| Em | E F# G A B C D |
-| C  | C D E F G A B |
-| G  | G A B C D E F# |
-| F  | F G A Bb C D E |
+| Key | Scale Notes | Type |
+|---|---|---|
+| Am | A B C D E F G | Minor |
+| Cm | C D Eb F G Ab Bb | Minor |
+| Dm | D E F G A Bb C | Minor |
+| Em | E F# G A B C D | Minor |
+| F#m | F# G# A B C# D E | Minor |
+| Ebm | Eb F Gb Ab Bb B Db | Minor |
+| C  | C D E F G A B | Major |
+| G  | G A B C D E F# | Major |
+| F  | F G A Bb C D E | Major |
+| Bb | Bb C D Eb F G A | Major |
+| Ab | Ab Bb C Db Eb F G | Major |
 
 ---
 
@@ -575,9 +714,10 @@ kick on 5                  →  BEAT_OUT_OF_RANGE  (context: "kick on")
 @genre lofi-hiphop
 @tempo 75 bpm
 @key Am
+@timesig 3/4
 ```
 
-Must appear at the top. Genre sets defaults for tempo and key if not explicitly declared.
+Must appear at the top. `@timesig` defaults to 4/4. Supported values: `3/4`, `4/4`, `5/4`.
 
 ### Drum Block
 
@@ -588,18 +728,23 @@ drums with swing(60%):
   snare on 2 and 4
   snare velocity random(0.7 to 0.9)
   hihat closed 8 times
+  hihat open on 4
+  hihat open on 2 and 4
   apply bitcrush(10bit)
   compress heavily
 ```
 
 | Statement | Behaviour |
 |---|---|
-| `kick pattern [...]` | Decimal beat positions — every value validated |
+| `kick pattern [...]` | Decimal beat positions — every value validated against `@timesig` |
 | `kick on X and Y` | Shorthand beats — `kick on 1 and 3 and 4` is valid |
 | `snare on X and Y` | Same. No line = no snare plays |
 | `snare velocity random(min to max)` | Per-hit velocity 0.0–1.0. Default: `0.6 to 0.8` |
-| `hihat N times` | Divides bar into N equal hits. No line = no hihat |
+| `hihat closed N times` | Divides bar into N equal closed hits |
+| `hihat open on X` | Open hihat on beat X. Multiple: `hihat open on 2 and 4`. Closed grid skips those positions automatically. |
 | `swing(N%)` | Shifts every other 8th note by N% |
+
+**Open hihat:** When `hihat open on 4` and `hihat closed 8 times` are both present, the closed grid fires on all 8 positions except beat 4, where the open hihat fires instead. No double-hit.
 
 ### Chord Block
 
@@ -660,7 +805,7 @@ Modifiers stack freely.
 | Step | Call | What happens |
 |---|---|---|
 | 1 | `initAudio()` | Creates synths + effects — must be called after a user gesture |
-| 2 | `playDrums(pattern, tempo)` | Builds drum `Tone.Part`, applies per-instrument bitcrusher routing |
+| 2 | `playDrums(pattern, tempo)` | Builds drum `Tone.Part`, handles closed + open hihat scheduling |
 | 3 | `playChords(progression, instrument, tempo)` | Builds chord `Tone.Part` from `CHORD_VOICINGS` map |
 | 4 | `playBass(progression, tempo)` | Builds bass `Tone.Part` from `BASS_ROOTS` map |
 | 5 | `playAtmosphere(atmos)` | Builds atmosphere nodes — does **not** start them yet |
@@ -670,6 +815,30 @@ Modifiers stack freely.
 | 9 | `cleanup()` | Disposes all Tone nodes — call on component destroy |
 
 > **Important:** Atmosphere nodes are free-running `Tone.Noise` instances. `Transport.stop()` alone does **not** stop them — `stopAtmosphere()` must be called explicitly.
+
+### Open Hihat Scheduling
+
+```typescript
+// Build a Set for O(1) lookup — multiply by 100 for float-safe comparison
+const openBeatSet = new Set(hihatOpenBeats.map(b => Math.round(b * 100)));
+
+// Closed grid — skips positions occupied by open hits
+for (let i = 0; i < count; i++) {
+  const beat = 1 + i * (timeSig / count);
+  if (!openBeatSet.has(Math.round(beat * 100))) {
+    events.push({ time: beatsToTransportTime(beat), type: "hihat_closed" });
+  }
+}
+
+// Open hits at specific beat positions — longer gate, higher velocity
+for (const beat of hihatOpenBeats) {
+  events.push({ time: beatsToTransportTime(beat), type: "hihat_open" });
+}
+
+// In the Part callback:
+// hihat_closed → triggerAttackRelease("16n", time, 0.5–0.8)
+// hihat_open   → triggerAttackRelease("8n",  time, 0.7–0.9)
+```
 
 ### Snare Velocity
 
@@ -683,6 +852,49 @@ const velocity = velMin + Math.random() * (velMax - velMin);
 
 Default when no velocity line is written: `{ min: 0.6, max: 0.8 }`.
 
+### MIDI Export
+
+```typescript
+// midi/export.ts
+exportMidi(program: SlaptProgram, bars = 4): Uint8Array
+
+// Produces a standard MIDI type-1 file with:
+//   Track 0  — tempo meta + time signature meta
+//   Track 1  — drums, GM channel 10
+//              kick=36, snare=38, hihat_closed=42, hihat_open=46
+//   Track 2  — chords, channel 1
+//   Track 3  — bass,   channel 2  (only if chords present)
+//
+// PPQN = 480 (standard quarter-note resolution)
+// Velocity sourced from program.drums.snareVelocity (min/max range)
+// Atmosphere is synthesis-only — not exportable to MIDI
+
+downloadMidi(program, filename)  // triggers browser download
+```
+
+The MIDI button in `Controls.svelte` is disabled while `parseResult.errors.length > 0`.
+
+### Auto-Save
+
+```typescript
+// stores/slapt.ts
+const STORAGE_KEY = "slapt_code_v1";
+
+// On mount — SSR-safe
+function loadSavedCode(): string {
+  if (typeof window === "undefined") return INITIAL_CODE;
+  return window.localStorage.getItem(STORAGE_KEY) ?? INITIAL_CODE;
+}
+
+// On every setCode() call
+function saveCode(code: string): void {
+  if (typeof window === "undefined") return;
+  try { window.localStorage.setItem(STORAGE_KEY, code); } catch {}
+}
+```
+
+Storage errors (quota exceeded, private browsing restrictions) are swallowed silently. To reset: `localStorage.removeItem("slapt_code_v1")` in the browser console.
+
 ---
 
 ## Web Service
@@ -691,7 +903,7 @@ Default when no velocity line is written: `{ min: 0.6, max: 0.8 }`.
 
 | Store | Type | Description |
 |---|---|---|
-| `code` | `string` | Current editor content |
+| `code` | `string` | Current editor content — loaded from localStorage on init |
 | `parseResult` | `ParseResult \| null` | Latest parse response including `program` |
 | `playbackState` | `stopped \| playing \| paused` | Transport state |
 | `tempo` | `number` | Current BPM — extracted from code via regex on every edit |
@@ -706,10 +918,11 @@ Derived stores: `hasErrors`, `hasWarnings`, `isPlaying`
 
 | Component | Responsibility |
 |---|---|
-| `Editor.svelte` | CodeMirror 6 — oneDark, line numbers, 400ms debounced parse, status dot |
-| `Controls.svelte` | Play/pause/stop — reads `program` from store, wires all engine calls |
+| `Editor.svelte` | CodeMirror 6 — oneDark, line numbers, 400ms debounced parse, status dot, **copy button top-right** |
+| `Controls.svelte` | Play/pause/stop — reads `program` from store, wires all engine calls, **MIDI export button** |
 | `Timeline.svelte` | 16-step grid — decimal beat support, CSS grid equal columns, absolute beat labels |
 | `ErrorPanel.svelte` | Errors (code + line + context + suggestions) and warnings |
+| `DocsDrawer.svelte` | Slide-over docs — sidenav + scrollable content, **updated with all new features** |
 
 ---
 

@@ -26,6 +26,9 @@
     { group: 'Reference', items: [
       { id: 'keys',        label: 'Supported Keys' },
       { id: 'genres',      label: 'Supported Genres' },
+      { id: 'timesig',     label: 'Time Signatures' },
+      { id: 'midi',        label: 'MIDI Export' },
+      { id: 'persist',     label: 'Auto-Save' },
       { id: 'errors',      label: 'Errors & Warnings' },
       { id: 'ascii',       label: 'ASCII Rule' },
       { id: 'cheatsheet',  label: 'Cheat Sheet' },
@@ -34,6 +37,8 @@
       { id: 'ex-lofi',     label: 'Lo-Fi Hip-Hop' },
       { id: 'ex-boombap',  label: 'Boom Bap' },
       { id: 'ex-techno',   label: 'Techno' },
+      { id: 'ex-waltz',    label: '3/4 Waltz Beat' },
+      { id: 'ex-five',     label: '5/4 Odd Time' },
       { id: 'ex-minimal',  label: 'Minimal Beat' },
     ]},
   ];
@@ -108,7 +113,7 @@
   <span class="op">kick on</span> <span class="num">1</span> <span class="op">and</span> <span class="num">3</span>
   <span class="op">snare on</span> <span class="num">2</span> <span class="op">and</span> <span class="num">4</span></code></pre>
         <p>Paste that in the editor and hit play. Everything else is layers on top.</p>
-        <div class="callout tip">💡 Code is parsed automatically 400ms after you stop typing. The status dot goes green when valid.</div>
+        <div class="callout tip">💡 Code is parsed automatically 400ms after you stop typing. The status dot goes green when valid. Your code is <strong>auto-saved</strong> — refreshing the page won't lose your work.</div>
       </section>
 
       <!-- ── FILE STRUCTURE ── -->
@@ -119,6 +124,7 @@
 <span class="kw">@genre</span> <span class="str">lofi-hiphop</span>
 <span class="kw">@tempo</span> <span class="num">75</span> bpm
 <span class="kw">@key</span> <span class="str">Am</span>
+<span class="kw">@timesig</span> <span class="num">3</span>/<span class="num">4</span>
 
 <span class="cmt"># 2. Blocks (any order, all optional)</span>
 <span class="blk">atmosphere</span>:  ...
@@ -143,6 +149,7 @@
             <tr><td><code>@genre</code></td><td><code>@genre lofi-hiphop</code></td><td>Sets BPM range warning context</td></tr>
             <tr><td><code>@tempo</code></td><td><code>@tempo 75 bpm</code></td><td>Sets BPM — warns if outside genre range</td></tr>
             <tr><td><code>@key</code></td><td><code>@key Am</code></td><td>Sets key for note validation</td></tr>
+            <tr><td><code>@timesig</code></td><td><code>@timesig 3/4</code></td><td>Sets time signature. Supported: 3/4, 4/4, 5/4</td></tr>
           </tbody>
         </table>
       </section>
@@ -156,20 +163,25 @@
   <span class="op">snare on</span> <span class="num">2</span> <span class="op">and</span> <span class="num">4</span>
   <span class="op">snare velocity random</span>(<span class="num">0.7</span> <span class="op">to</span> <span class="num">0.9</span>)
   <span class="op">hihat closed</span> <span class="num">8</span> <span class="op">times</span>
+  <span class="op">hihat open on</span> <span class="num">4</span>
+  <span class="op">hihat open on</span> <span class="num">2</span> <span class="op">and</span> <span class="num">4</span>
   <span class="op">apply bitcrush</span>(<span class="str">10bit</span>)
   <span class="op">compress heavily</span></code></pre>
         <table>
           <thead><tr><th>Statement</th><th>What it does</th><th>Default</th></tr></thead>
           <tbody>
             <tr><td><code>kick pattern [...]</code></td><td>Decimal beat positions, all validated</td><td>—</td></tr>
-            <tr><td><code>kick on 1 and 3</code></td><td>Shorthand beats. Three beats also valid: <code>kick on 1 and 2 and 4</code></td><td>—</td></tr>
-            <tr><td><code>snare on 2 and 4</code></td><td>Same as kick shorthand. No line = no snare</td><td>no snare</td></tr>
+            <tr><td><code>kick on 1 and 3</code></td><td>Shorthand beats</td><td>—</td></tr>
+            <tr><td><code>snare on 2 and 4</code></td><td>Same as kick shorthand</td><td>no snare</td></tr>
             <tr><td><code>snare velocity random(0.7 to 0.9)</code></td><td>Per-hit velocity. Range 0.0–1.0</td><td>0.6 to 0.8</td></tr>
-            <tr><td><code>hihat N times</code></td><td>4 = quarters, 8 = eighths, 16 = sixteenths</td><td>no hihat</td></tr>
+            <tr><td><code>hihat closed N times</code></td><td>4 = quarters, 8 = eighths, 16 = sixteenths</td><td>no hihat</td></tr>
+            <tr><td><code>hihat open on 4</code></td><td>Open hihat on beat 4 (longer, brighter sound). Multiple: <code>hihat open on 2 and 4</code></td><td>no open hihat</td></tr>
             <tr><td><code>apply bitcrush(10bit)</code></td><td>BitCrusher per instrument, no bleed</td><td>off</td></tr>
             <tr><td><code>compress heavily</code></td><td>Separate compressor per instrument</td><td>off</td></tr>
           </tbody>
         </table>
+        <h3>Open hihat explained</h3>
+        <p>When you write <code>hihat open on 4</code>, beat 4 becomes an open hihat hit instead of a closed one — even if <code>hihat closed 8 times</code> is present. The closed grid automatically skips that position to avoid layering. This is standard drum machine behaviour.</p>
         <h3>Decimal beats explained</h3>
         <pre><code><span class="num">1</span>    = beat 1 downbeat
 <span class="num">1.5</span>  = beat 1 + one 8th note  (the "and" of 1)
@@ -290,15 +302,19 @@
       <section id="doc-keys" class="doc-sec">
         <div class="sec-head"><span class="sec-num">10</span><h2>Supported Keys</h2></div>
         <table>
-          <thead><tr><th>Key</th><th>Scale Notes</th></tr></thead>
+          <thead><tr><th>Key</th><th>Scale Notes</th><th>Flavour</th></tr></thead>
           <tbody>
-            <tr><td><code>Am</code></td><td>A B C D E F G</td></tr>
-            <tr><td><code>Cm</code></td><td>C D Eb F G Ab Bb</td></tr>
-            <tr><td><code>Dm</code></td><td>D E F G A Bb C</td></tr>
-            <tr><td><code>Em</code></td><td>E F# G A B C D</td></tr>
-            <tr><td><code>C</code></td><td>C D E F G A B</td></tr>
-            <tr><td><code>G</code></td><td>G A B C D E F#</td></tr>
-            <tr><td><code>F</code></td><td>F G A Bb C D E</td></tr>
+            <tr><td><code>Am</code></td><td>A B C D E F G</td><td>Dark, melancholic — the lo-fi default</td></tr>
+            <tr><td><code>Cm</code></td><td>C D Eb F G Ab Bb</td><td>Brooding, cinematic</td></tr>
+            <tr><td><code>Dm</code></td><td>D E F G A Bb C</td><td>Jazz-dark, moody</td></tr>
+            <tr><td><code>Em</code></td><td>E F# G A B C D</td><td>Tense, a little brighter</td></tr>
+            <tr><td><code>F#m</code></td><td>F# G# A B C# D E</td><td>Ethereal, floaty — great for ambient</td></tr>
+            <tr><td><code>Ebm</code></td><td>Eb F Gb Ab Bb B Db</td><td>Deep, heavy — suits trap/dnb</td></tr>
+            <tr><td><code>C</code></td><td>C D E F G A B</td><td>Clean, bright major</td></tr>
+            <tr><td><code>G</code></td><td>G A B C D E F#</td><td>Open, pastoral</td></tr>
+            <tr><td><code>F</code></td><td>F G A Bb C D E</td><td>Warm major</td></tr>
+            <tr><td><code>Bb</code></td><td>Bb C D Eb F G A</td><td>Jazzy, soulful</td></tr>
+            <tr><td><code>Ab</code></td><td>Ab Bb C Db Eb F G</td><td>Rich, lush — good for neo-soul</td></tr>
           </tbody>
         </table>
         <div class="callout warn">⚠ Notes outside the key trigger a <code>NOTE_OUT_OF_SCALE</code> warning — the track still plays.</div>
@@ -322,16 +338,85 @@
         <p>BPM outside the range fires a <code>TEMPO_GENRE_MISMATCH</code> warning — the track still plays at exactly your tempo.</p>
       </section>
 
+      <!-- ── TIME SIGNATURES ── -->
+      <section id="doc-timesig" class="doc-sec">
+        <div class="sec-head"><span class="sec-num">12</span><h2>Time Signatures</h2></div>
+        <p>SLAPT defaults to 4/4. To change it, add <code>@timesig</code> before your blocks:</p>
+        <pre><code><span class="kw">@timesig</span> <span class="num">3</span>/<span class="num">4</span>   <span class="cmt"># waltz / jazz waltz</span>
+<span class="kw">@timesig</span> <span class="num">5</span>/<span class="num">4</span>   <span class="cmt"># Dave Brubeck / Radiohead territory</span>
+<span class="kw">@timesig</span> <span class="num">4</span>/<span class="num">4</span>   <span class="cmt"># explicit default, same as not writing it</span></code></pre>
+        <table>
+          <thead><tr><th>Time sig</th><th>Beats per bar</th><th>Beat validation range</th></tr></thead>
+          <tbody>
+            <tr><td><code>3/4</code></td><td>3</td><td>Beats 1–3 valid. Beat 4 triggers BEAT_OUT_OF_RANGE.</td></tr>
+            <tr><td><code>4/4</code></td><td>4</td><td>Beats 1–4 valid (default)</td></tr>
+            <tr><td><code>5/4</code></td><td>5</td><td>Beats 1–5 valid</td></tr>
+          </tbody>
+        </table>
+        <div class="callout tip">💡 In 3/4 the bar timeline shows 3 beats instead of 4. In 5/4 you get 5 — great for off-kilter grooves.</div>
+        <h3>3/4 drum example</h3>
+        <pre><code><span class="kw">@timesig</span> <span class="num">3</span>/<span class="num">4</span>
+
+<span class="blk">drums</span>:
+  <span class="op">kick on</span> <span class="num">1</span>
+  <span class="op">snare on</span> <span class="num">2</span> <span class="op">and</span> <span class="num">3</span>
+  <span class="op">hihat closed</span> <span class="num">6</span> <span class="op">times</span></code></pre>
+        <h3>5/4 drum example</h3>
+        <pre><code><span class="kw">@timesig</span> <span class="num">5</span>/<span class="num">4</span>
+
+<span class="blk">drums</span>:
+  <span class="op">kick on</span> <span class="num">1</span> <span class="op">and</span> <span class="num">4</span>
+  <span class="op">snare on</span> <span class="num">2</span> <span class="op">and</span> <span class="num">5</span>
+  <span class="op">hihat closed</span> <span class="num">10</span> <span class="op">times</span></code></pre>
+      </section>
+
+      <!-- ── MIDI EXPORT ── -->
+      <section id="doc-midi" class="doc-sec">
+        <div class="sec-head"><span class="sec-num">13</span><h2>MIDI Export</h2></div>
+        <p>Click the <strong>MIDI</strong> button in the top bar to download a standard <code>.mid</code> file. You can import it into any DAW — Ableton, Logic, FL Studio, GarageBand, etc.</p>
+        <table>
+          <thead><tr><th>Track</th><th>MIDI Channel</th><th>What's exported</th></tr></thead>
+          <tbody>
+            <tr><td>Drums</td><td>Channel 10 (GM standard)</td><td>Kick, snare, closed hihat, open hihat — all hits with velocity</td></tr>
+            <tr><td>Chords</td><td>Channel 1</td><td>All chord voicings for 4 bars</td></tr>
+            <tr><td>Bass</td><td>Channel 2</td><td>Root note per chord for 4 bars</td></tr>
+          </tbody>
+        </table>
+        <div class="callout tip">💡 Atmosphere (vinyl crackle, rain, tape wobble) is synthesis-only — it doesn't export to MIDI. Everything else does.</div>
+        <div class="callout warn">⚠ The MIDI button is disabled while there are parse errors. Fix your code first.</div>
+        <h3>GM drum note map used</h3>
+        <table>
+          <thead><tr><th>Drum</th><th>MIDI note</th><th>GM name</th></tr></thead>
+          <tbody>
+            <tr><td>Kick</td><td>36</td><td>Bass Drum 1</td></tr>
+            <tr><td>Snare</td><td>38</td><td>Acoustic Snare</td></tr>
+            <tr><td>Hihat closed</td><td>42</td><td>Closed Hi-Hat</td></tr>
+            <tr><td>Hihat open</td><td>46</td><td>Open Hi-Hat</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- ── AUTO-SAVE ── -->
+      <section id="doc-persist" class="doc-sec">
+        <div class="sec-head"><span class="sec-num">14</span><h2>Auto-Save</h2></div>
+        <p>Your code is saved to <code>localStorage</code> every time you type. Refreshing or closing the tab preserves your work automatically — no manual save needed.</p>
+        <p>The key used is <code>slapt_code_v1</code>. Data stays on your device and is never sent anywhere beyond the local parser service.</p>
+        <div class="callout tip">💡 If you want to start fresh, open the browser console and run <code>localStorage.removeItem("slapt_code_v1")</code>, then refresh.</div>
+      </section>
+
       <!-- ── ERRORS ── -->
       <section id="doc-errors" class="doc-sec">
-        <div class="sec-head"><span class="sec-num">12</span><h2>Errors &amp; Warnings</h2></div>
+        <div class="sec-head"><span class="sec-num">15</span><h2>Errors &amp; Warnings</h2></div>
         <p><strong>Errors</strong> stop playback. <strong>Warnings</strong> let the track play but flag something off.</p>
 
         <h3>BEAT_OUT_OF_RANGE <span class="badge err">error</span></h3>
         <pre><code><span class="op">kick pattern</span> [<span class="num">1</span>, <span class="num">2.75</span>, <span class="num">5</span>]
 <span class="cmt">→ Beat 5 doesn't exist in 4/4 time</span>
 <span class="cmt">  context: "kick pattern"</span></code></pre>
-        <p>Checked separately for <code>kick on</code>, <code>kick pattern</code>, and <code>snare on</code>. The <code>context</code> field tells you exactly which line caused it.</p>
+        <p>Also checked for <code>snare on</code> and <code>hihat open on</code>. Beat range adjusts automatically when you use <code>@timesig</code>.</p>
+
+        <h3>TIMESIG_UNSUPPORTED <span class="badge err">error</span></h3>
+        <p>The requested time signature is not yet implemented. Use 3/4, 4/4, or 5/4.</p>
 
         <h3>TEMPO_GENRE_MISMATCH <span class="badge warn">warning</span></h3>
         <p>BPM is outside the genre's typical range. Track plays at your exact tempo regardless.</p>
@@ -342,7 +427,7 @@
 
       <!-- ── ASCII RULE ── -->
       <section id="doc-ascii" class="doc-sec">
-        <div class="sec-head"><span class="sec-num">13</span><h2>ASCII Rule</h2></div>
+        <div class="sec-head"><span class="sec-num">16</span><h2>ASCII Rule</h2></div>
         <p>SLAPT only accepts ASCII characters. Pasting from Google Docs, Notes, or Word often breaks things:</p>
         <table>
           <thead><tr><th>Don't use</th><th>Use instead</th></tr></thead>
@@ -360,18 +445,20 @@
 
       <!-- ── CHEAT SHEET ── -->
       <section id="doc-cheatsheet" class="doc-sec">
-        <div class="sec-head"><span class="sec-num">14</span><h2>Cheat Sheet</h2></div>
+        <div class="sec-head"><span class="sec-num">17</span><h2>Cheat Sheet</h2></div>
         <div class="cheatsheet">
           <div class="cs-row"><code>@genre lofi-hiphop</code><span>Set genre context</span></div>
           <div class="cs-row"><code>@tempo 75 bpm</code><span>Set BPM</span></div>
-          <div class="cs-row"><code>@key Am</code><span>Set key for scale validation</span></div>
+          <div class="cs-row"><code>@key Am</code><span>Set key (now includes F#m, Bb, Ab, Ebm)</span></div>
+          <div class="cs-row"><code>@timesig 3/4</code><span>3/4 or 5/4 — changes beat validation range</span></div>
           <div class="cs-row cs-group">Drums</div>
           <div class="cs-row"><code>drums with swing(60%):</code><span>Open drum block with shuffle</span></div>
           <div class="cs-row"><code>kick on 1 and 3</code><span>Kick on beats</span></div>
           <div class="cs-row"><code>kick pattern [1, 2.75, 3]</code><span>Kick at decimal positions</span></div>
           <div class="cs-row"><code>snare on 2 and 4</code><span>Snare on beats</span></div>
           <div class="cs-row"><code>snare velocity random(0.7 to 0.9)</code><span>Random velocity per hit</span></div>
-          <div class="cs-row"><code>hihat closed 8 times</code><span>Hihat N per bar</span></div>
+          <div class="cs-row"><code>hihat closed 8 times</code><span>Closed hihat N per bar</span></div>
+          <div class="cs-row"><code>hihat open on 4</code><span>Open hihat on beat 4 (or: on 2 and 4)</span></div>
           <div class="cs-row"><code>apply bitcrush(10bit)</code><span>BitCrusher on drums</span></div>
           <div class="cs-row"><code>compress heavily</code><span>Compressor on kick + snare</span></div>
           <div class="cs-row cs-group">Chords</div>
@@ -393,13 +480,17 @@
           <div class="cs-row"><code>make it dusty</code><span>Bitcrush + crackle</span></div>
           <div class="cs-row"><code>add some laziness</code><span>Pushed timing</span></div>
           <div class="cs-row"><code>bring energy up</code><span>Velocity + fills</span></div>
+          <div class="cs-row cs-group">Editor</div>
+          <div class="cs-row"><code>Copy icon (top-right)</code><span>Copy entire code to clipboard</span></div>
+          <div class="cs-row"><code>MIDI button (top bar)</code><span>Download .mid — works in any DAW</span></div>
+          <div class="cs-row"><code>Auto-save</code><span>Code persists through page refresh</span></div>
         </div>
       </section>
 
       <!-- ── EXAMPLE: LOFI ── -->
       <section id="doc-ex-lofi" class="doc-sec">
-        <div class="sec-head"><span class="sec-num">15</span><h2>Example — Lo-Fi Hip-Hop</h2></div>
-        <p>The classic midnight study session. Every layer, full arrangement.</p>
+        <div class="sec-head"><span class="sec-num">18</span><h2>Example — Lo-Fi Hip-Hop</h2></div>
+        <p>The classic midnight study session. Features open hihat on beat 4 for that smoky jazz feel.</p>
         <pre><code><span class="kw">@genre</span> <span class="str">lofi-hiphop</span>
 <span class="kw">@tempo</span> <span class="num">72</span> bpm
 <span class="kw">@key</span> <span class="str">Am</span>
@@ -413,6 +504,7 @@
   <span class="op">snare on</span> <span class="num">2</span> <span class="op">and</span> <span class="num">4</span>
   <span class="op">snare velocity random</span>(<span class="num">0.7</span> <span class="op">to</span> <span class="num">0.9</span>)
   <span class="op">hihat closed</span> <span class="num">8</span> <span class="op">times</span>
+  <span class="op">hihat open on</span> <span class="num">4</span>
   <span class="op">apply bitcrush</span>(<span class="str">10bit</span>)
   <span class="op">compress heavily</span>
 
@@ -431,10 +523,6 @@
   <span class="op">only drums and atmosphere</span>
   <span class="op">fade in over</span> <span class="num">4</span> <span class="op">bars</span>
 
-<span class="blk">section verse</span>:
-  <span class="op">add chords after</span> <span class="num">4</span> <span class="op">bars</span>
-  <span class="op">add bass after</span> <span class="num">4</span> <span class="op">bars</span>
-
 <span class="blk">section outro</span>:
   <span class="op">fade out everything over</span> <span class="num">8</span> <span class="op">bars</span>
 
@@ -443,7 +531,7 @@
 
       <!-- ── EXAMPLE: BOOM BAP ── -->
       <section id="doc-ex-boombap" class="doc-sec">
-        <div class="sec-head"><span class="sec-num">16</span><h2>Example — Boom Bap</h2></div>
+        <div class="sec-head"><span class="sec-num">19</span><h2>Example — Boom Bap</h2></div>
         <pre><code><span class="kw">@genre</span> <span class="str">boom-bap</span>
 <span class="kw">@tempo</span> <span class="num">90</span> bpm
 <span class="kw">@key</span> <span class="str">Dm</span>
@@ -453,6 +541,7 @@
   <span class="op">snare on</span> <span class="num">2</span> <span class="op">and</span> <span class="num">4</span>
   <span class="op">snare velocity random</span>(<span class="num">0.6</span> <span class="op">to</span> <span class="num">1.0</span>)
   <span class="op">hihat closed</span> <span class="num">8</span> <span class="op">times</span>
+  <span class="op">hihat open on</span> <span class="num">2</span> <span class="op">and</span> <span class="num">4</span>
 
 <span class="blk">chords</span> <span class="op">using</span> <span class="str">rhodes piano</span>:
   <span class="op">progression</span> <span class="str">Dm7</span> -> <span class="str">Cmaj7</span> -> <span class="str">Am7</span> -> <span class="str">Gmaj7</span>
@@ -466,7 +555,7 @@
 
       <!-- ── EXAMPLE: TECHNO ── -->
       <section id="doc-ex-techno" class="doc-sec">
-        <div class="sec-head"><span class="sec-num">17</span><h2>Example — Techno</h2></div>
+        <div class="sec-head"><span class="sec-num">20</span><h2>Example — Techno</h2></div>
         <pre><code><span class="kw">@genre</span> <span class="str">techno</span>
 <span class="kw">@tempo</span> <span class="num">134</span> bpm
 <span class="kw">@key</span> <span class="str">Em</span>
@@ -495,9 +584,65 @@
 <span class="op">bring energy up</span></code></pre>
       </section>
 
+      <!-- ── EXAMPLE: 3/4 WALTZ ── -->
+      <section id="doc-ex-waltz" class="doc-sec">
+        <div class="sec-head"><span class="sec-num">21</span><h2>Example — 3/4 Waltz Beat</h2></div>
+        <p>Moody jazz waltz. Classic 1-2-3 with an open hat on the 3.</p>
+        <pre><code><span class="kw">@genre</span> <span class="str">lofi-hiphop</span>
+<span class="kw">@tempo</span> <span class="num">80</span> bpm
+<span class="kw">@key</span> <span class="str">F#m</span>
+<span class="kw">@timesig</span> <span class="num">3</span>/<span class="num">4</span>
+
+<span class="blk">atmosphere</span>:
+  <span class="op">vinyl crackle at</span> <span class="num">15</span>% <span class="op">volume</span>
+
+<span class="blk">drums</span> <span class="op">with swing</span>(<span class="num">55</span>%):
+  <span class="op">kick on</span> <span class="num">1</span>
+  <span class="op">snare on</span> <span class="num">2</span>
+  <span class="op">hihat closed</span> <span class="num">6</span> <span class="op">times</span>
+  <span class="op">hihat open on</span> <span class="num">3</span>
+
+<span class="blk">chords</span> <span class="op">using</span> <span class="str">rhodes piano</span>:
+  <span class="op">progression</span> <span class="str">Am7</span> -> <span class="str">Fmaj7</span> -> <span class="str">Em</span>
+  <span class="op">voicing</span> <span class="str">spread</span>
+  <span class="op">reverb</span>(<span class="str">medium</span>, <span class="str">dreamy</span>)
+
+<span class="blk">bass</span> <span class="op">walking the roots</span>:
+  <span class="op">follow chord progression</span>
+  <span class="op">sound</span> <span class="str">mellow</span>
+
+<span class="op">make it dusty</span></code></pre>
+      </section>
+
+      <!-- ── EXAMPLE: 5/4 ODD TIME ── -->
+      <section id="doc-ex-five" class="doc-sec">
+        <div class="sec-head"><span class="sec-num">22</span><h2>Example — 5/4 Odd Time</h2></div>
+        <p>That restless, slightly-off feeling. Group as 3+2 — kick on 1 and 4, snare on 2 and 5.</p>
+        <pre><code><span class="kw">@genre</span> <span class="str">lofi-hiphop</span>
+<span class="kw">@tempo</span> <span class="num">78</span> bpm
+<span class="kw">@key</span> <span class="str">Bb</span>
+<span class="kw">@timesig</span> <span class="num">5</span>/<span class="num">4</span>
+
+<span class="blk">drums</span> <span class="op">with swing</span>(<span class="num">40</span>%):
+  <span class="op">kick on</span> <span class="num">1</span> <span class="op">and</span> <span class="num">4</span>
+  <span class="op">snare on</span> <span class="num">2</span> <span class="op">and</span> <span class="num">5</span>
+  <span class="op">hihat closed</span> <span class="num">10</span> <span class="op">times</span>
+  <span class="op">hihat open on</span> <span class="num">3</span>
+
+<span class="blk">atmosphere</span>:
+  <span class="op">tape wobble subtle</span>
+  <span class="op">vinyl crackle at</span> <span class="num">10</span>% <span class="op">volume</span>
+
+<span class="blk">chords</span> <span class="op">using</span> <span class="str">rhodes piano</span>:
+  <span class="op">progression</span> <span class="str">Dm7</span> -> <span class="str">Am7</span> -> <span class="str">Cmaj7</span>
+  <span class="op">reverb</span>(<span class="str">medium</span>, <span class="str">dreamy</span>)
+
+<span class="op">add some laziness</span></code></pre>
+      </section>
+
       <!-- ── EXAMPLE: MINIMAL ── -->
       <section id="doc-ex-minimal" class="doc-sec">
-        <div class="sec-head"><span class="sec-num">18</span><h2>Example — Minimal Beat</h2></div>
+        <div class="sec-head"><span class="sec-num">23</span><h2>Example — Minimal Beat</h2></div>
         <p>Just drums. The starting point for every track.</p>
         <pre><code><span class="kw">@genre</span> <span class="str">lofi-hiphop</span>
 <span class="kw">@tempo</span> <span class="num">75</span> bpm
@@ -514,7 +659,6 @@
 </div><!-- end drawer -->
 
 <style>
-  /* ── TOKENS (mirrors app.css) ── */
   :root {
     --doc-bg:      #0e0e10;
     --doc-bg2:     #141416;
@@ -533,7 +677,6 @@
     --doc-blue:    #6ab0e8;
   }
 
-  /* ── BACKDROP ── */
   .backdrop {
     position: fixed; inset: 0; z-index: 900;
     background: rgba(0,0,0,0.6);
@@ -542,7 +685,6 @@
   }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-  /* ── DRAWER SHELL ── */
   .drawer {
     position: fixed;
     top: 0; right: 0; bottom: 0;
@@ -558,7 +700,6 @@
   }
   .drawer.open { transform: translateX(0); }
 
-  /* ── DRAWER HEADER ── */
   .drawer-header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 24px;
@@ -587,14 +728,12 @@
   }
   .close-btn:hover { border-color: var(--doc-accent); color: var(--doc-accent2); background: var(--doc-bg4); }
 
-  /* ── DRAWER BODY ── */
   .drawer-body {
     display: flex;
     flex: 1;
     overflow: hidden;
   }
 
-  /* ── SIDENAV ── */
   .doc-nav {
     width: 200px;
     flex-shrink: 0;
@@ -623,7 +762,6 @@
   .nav-item.active { color: var(--doc-accent2); background: rgba(200,169,110,0.07); border-left-color: var(--doc-accent); }
   .nav-dot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: 0.5; flex-shrink: 0; }
 
-  /* ── SCROLLABLE CONTENT ── */
   .doc-content {
     flex: 1;
     overflow-y: auto;
@@ -633,7 +771,6 @@
   .doc-content::-webkit-scrollbar-track { background: var(--doc-bg); }
   .doc-content::-webkit-scrollbar-thumb { background: var(--doc-border2); border-radius: 3px; }
 
-  /* ── SECTIONS ── */
   .doc-sec {
     margin-bottom: 56px;
     scroll-margin-top: 20px;
@@ -664,7 +801,6 @@
   p:last-child { margin-bottom: 0; }
   strong { color: var(--doc-text); }
 
-  /* ── CODE ── */
   pre {
     background: var(--doc-bg2);
     border: 1px solid var(--doc-border);
@@ -685,7 +821,6 @@
     font-size: 11.5px; color: var(--doc-accent2);
     font-family: 'Space Mono', monospace;
   }
-  /* syntax colours */
   .kw  { color: #c8a96e; }
   .str { color: #6bcf7f; }
   .num { color: #6ab0e8; }
@@ -693,7 +828,6 @@
   .blk { color: #e8c980; font-weight: 700; }
   .op  { color: #b8b0a0; }
 
-  /* ── TABLES ── */
   table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; }
   th {
     font-family: 'Space Mono', monospace;
@@ -710,7 +844,6 @@
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: var(--doc-bg3); }
 
-  /* ── CALLOUTS ── */
   .callout {
     padding: 10px 14px; border-radius: 6px;
     border-left: 3px solid; margin: 12px 0;
@@ -720,7 +853,6 @@
   .callout.warn { background: rgba(232,131,74,0.05);  border-color: #e8834a; }
   .callout.err  { background: rgba(232,90,90,0.05);   border-color: #e85a5a; }
 
-  /* ── BADGE ── */
   .badge {
     display: inline-block;
     font-family: 'Space Mono', monospace;
@@ -730,7 +862,6 @@
   .badge.err  { background: rgba(232,90,90,0.15);  color: #e85a5a; }
   .badge.warn { background: rgba(232,131,74,0.15); color: #e8834a; }
 
-  /* ── MODIFIER GRID ── */
   .mod-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
   .mod-card {
     background: var(--doc-bg3);
@@ -740,7 +871,6 @@
   .mod-name { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--doc-accent2); margin-bottom: 5px; }
   .mod-desc { font-size: 12.5px; color: var(--doc-text2); line-height: 1.5; }
 
-  /* ── CHEAT SHEET ── */
   .cheatsheet { background: var(--doc-bg2); border: 1px solid var(--doc-border); border-radius: 8px; overflow: hidden; }
   .cs-row {
     display: flex; align-items: baseline; gap: 12px;
@@ -757,7 +887,6 @@
     color: var(--doc-text3); padding: 8px 14px;
   }
 
-  /* ── RESPONSIVE ── */
   @media (max-width: 600px) {
     .doc-nav { display: none; }
     .doc-content { padding: 24px 20px 60px; }
@@ -765,4 +894,3 @@
     .drawer { width: 100vw; }
   }
 </style>
-

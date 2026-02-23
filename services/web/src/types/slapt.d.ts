@@ -42,10 +42,16 @@ export interface SlaptStore {
   isLoading: boolean;
 }
 
+export interface TimeSig {
+  numerator: number;
+  denominator: number;
+}
+
 export interface SlaptProgram {
   genre: string;
   tempo: number;
   key: string;
+  timeSig?: TimeSig;
   drums: DrumProgramOutput | null;
   chords: ChordProgramOutput | null;
   bass: BassProgramOutput | null;
@@ -57,10 +63,11 @@ export interface DrumProgramOutput {
   swing: number;
   kick: number[];
   snare: number[];
-  // FIX: carry parsed velocity range so scheduler uses real values not hardcoded ones
   snareVelocity: { min: number; max: number } | null;
   hihat: { count: number; type: "closed" | "open" | "mixed" };
+  hihatOpenBeats?: number[];
   effects: string[];
+  timeSig?: number;
 }
 
 export interface ChordProgramOutput {

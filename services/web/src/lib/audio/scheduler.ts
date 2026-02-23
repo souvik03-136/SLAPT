@@ -10,6 +10,8 @@ export interface DrumPattern {
     type: "closed" | "open" | "mixed";
     feel?: string;
   };
+  // New: specific beat positions for open hihat
+  hihatOpenBeats?: number[];
   swing: number;
   effects: string[];
 }
@@ -34,9 +36,6 @@ export interface AtmosphereNodes {
   rainNoise: Tone.Noise | null;
   rainFilter: Tone.Filter | null;
   rainGain: Tone.Gain | null;
-  // FIX: replaced Tone.LFO → bpm approach with a plain JS interval.
-  // Tone.LFO connected to Transport.bpm fights with direct .value writes
-  // and produces loud audio glitching that sounds like white noise.
   wobbleInterval: ReturnType<typeof setInterval> | null;
   wobbleBpm: number;
 }
@@ -69,7 +68,7 @@ export function scheduleDrums(pattern: DrumPattern, synths: SynthRack): Tone.Par
   Tone.getTransport().swing = pattern.swing / 100;
   Tone.getTransport().swingSubdivision = "8n";
 
-  type DrumEvent = { time: string; type: "kick" | "snare" | "hihat" };
+  type DrumEvent = { time: string; type: "kick" | "snare" | "hihat_closed" | "hihat_open" };
   const events: DrumEvent[] = [];
 
   for (const beat of pattern.kick) {
@@ -80,18 +79,34 @@ export function scheduleDrums(pattern: DrumPattern, synths: SynthRack): Tone.Par
     events.push({ time: beatsToTransportTime(beat), type: "snare" });
   }
 
+  // Regular closed hihat grid
   if (pattern.hihat.count > 0) {
     const hihatInterval = 4 / pattern.hihat.count;
+    // Build a set of open hihat beat positions for easy lookup
+    const openBeatSet = new Set((pattern.hihatOpenBeats ?? []).map(
+      (b) => Math.round(b * 100)  // multiply to avoid float comparison issues
+    ));
+
     for (let i = 0; i < pattern.hihat.count; i++) {
-      events.push({
-        time: beatsToTransportTime(1 + i * hihatInterval),
-        type: "hihat",
-      });
+      const beat = 1 + i * hihatInterval;
+      const beatKey = Math.round(beat * 100);
+      // If this grid position coincides with an open hihat beat, skip closed hit
+      if (!openBeatSet.has(beatKey)) {
+        events.push({
+          time: beatsToTransportTime(beat),
+          type: "hihat_closed",
+        });
+      }
     }
   }
 
-  const velMin = pattern.snareVelocity?.min ?? 0.6;
-  const velMax = pattern.snareVelocity?.max ?? 0.8;
+  // Open hihat on specific beats
+  for (const beat of (pattern.hihatOpenBeats ?? [])) {
+    events.push({ time: beatsToTransportTime(beat), type: "hihat_open" });
+  }
+
+  const velMin   = pattern.snareVelocity?.min ?? 0.6;
+  const velMax   = pattern.snareVelocity?.max ?? 0.8;
   const velRange = velMax - velMin;
 
   const part = new Tone.Part<DrumEvent>((time, event) => {
@@ -100,8 +115,11 @@ export function scheduleDrums(pattern: DrumPattern, synths: SynthRack): Tone.Par
     } else if (event.type === "snare") {
       const velocity = velMin + Math.random() * velRange;
       synths.snare.triggerAttackRelease("16n", time, velocity);
-    } else if (event.type === "hihat") {
+    } else if (event.type === "hihat_closed") {
       synths.hihat.triggerAttackRelease("16n", time, 0.5 + Math.random() * 0.3);
+    } else if (event.type === "hihat_open") {
+      // Open hihat: longer decay, higher pitch
+      synths.hihat.triggerAttackRelease("8n", time, 0.7 + Math.random() * 0.2);
     }
   }, events);
 
@@ -162,16 +180,10 @@ export function scheduleAtmosphere(atmos: AtmospherePattern): AtmosphereNodes {
     wobbleBpm: Tone.getTransport().bpm.value,
   };
 
-  // ── Vinyl crackle ──────────────────────────────────────────────────────────
-  // Real vinyl crackle = two layers:
-  // 1. A very quiet continuous low rumble (the "surface noise" floor)
-  // 2. Random amplitude bursts triggered by a Tone.Loop (the actual pops/ticks)
-  // Both are stored in vinylNoise/vinylFilter/vinylGain for disposal.
+  // ── Vinyl crackle ───────────────────────────────────────────────────────
   if (atmos.vinylCrackle > 0) {
     const scaledGain = (atmos.vinylCrackle / 100) * 0.06;
 
-    // Layer 1: continuous surface hiss — brown noise, very low volume,
-    // bandpass around 2kHz to give it that dusty mid-range texture
     const rumbleGain = new Tone.Gain(scaledGain * 0.3).toDestination();
     const rumbleFilter = new Tone.Filter({
       frequency: 2200,
@@ -180,8 +192,6 @@ export function scheduleAtmosphere(atmos: AtmospherePattern): AtmosphereNodes {
     }).connect(rumbleGain);
     const rumbleNoise = new Tone.Noise("brown").connect(rumbleFilter);
 
-    // Layer 2: random crackle pops — white noise bursts gated by an
-    // amplitude envelope triggered on a randomised loop
     const popGain = new Tone.Gain(scaledGain * 0.7).toDestination();
     const popFilter = new Tone.Filter({
       frequency: 3500,
@@ -196,20 +206,14 @@ export function scheduleAtmosphere(atmos: AtmospherePattern): AtmosphereNodes {
     }).connect(popFilter);
     const popNoise = new Tone.Noise("white").connect(popEnv);
 
-    // Fire pops at random intervals between 0.3s and 2.5s
     const popLoop = new Tone.Loop(() => {
       popEnv.triggerAttackRelease(0.03);
-      // reschedule at a new random interval each time
       popLoop.interval = `${0.3 + Math.random() * 2.2}s` as Tone.Unit.Time;
     }, "1s");
 
-    // Store everything we need to start/stop/dispose
-    // Reuse the interface slots: vinylNoise = rumble, vinylFilter = popLoop,
-    // vinylGain = popNoise (all stopped/disposed in stopAtmosphere/disposeAtmosphere)
     nodes.vinylNoise   = rumbleNoise;
     nodes.vinylFilter  = rumbleFilter;
     nodes.vinylGain    = rumbleGain;
-    // stash pop nodes in rain slots temporarily — we extend the interface below
     (nodes as any)._popNoise  = popNoise;
     (nodes as any)._popEnv    = popEnv;
     (nodes as any)._popFilter = popFilter;
@@ -217,60 +221,38 @@ export function scheduleAtmosphere(atmos: AtmospherePattern): AtmosphereNodes {
     (nodes as any)._popLoop   = popLoop;
   }
 
-  // ── Rain ───────────────────────────────────────────────────────────────────
-  // Real rain = three layered brown noise sources at different frequencies:
-  // 1. Low rumble (the overall wash, <200Hz)
-  // 2. Mid splash (individual drops hitting surfaces, 200-800Hz)
-  // 3. Gentle high sparkle (very quiet, 800-2000Hz, gives air to the sound)
-  // All three are mixed together at low overall gain.
+  // ── Rain ────────────────────────────────────────────────────────────────
   if (atmos.rain) {
-    // Low rumble layer
     const lowGain = new Tone.Gain(0.07).toDestination();
-    const lowFilter = new Tone.Filter({
-      frequency: 200,
-      type: "lowpass",
-      rolloff: -48,
-    }).connect(lowGain);
+    const lowFilter = new Tone.Filter({ frequency: 200, type: "lowpass", rolloff: -48 }).connect(lowGain);
     const lowNoise = new Tone.Noise("brown").connect(lowFilter);
 
-    // Mid splash layer
     const midGain = new Tone.Gain(0.04).toDestination();
-    const midFilter = new Tone.Filter({
-      frequency: 700,
-      type: "bandpass",
-      Q: 0.6,
-    }).connect(midGain);
+    const midFilter = new Tone.Filter({ frequency: 700, type: "bandpass", Q: 0.6 }).connect(midGain);
     const midNoise = new Tone.Noise("brown").connect(midFilter);
 
-    // High sparkle layer — very quiet
     const highGain = new Tone.Gain(0.015).toDestination();
-    const highFilter = new Tone.Filter({
-      frequency: 1400,
-      type: "bandpass",
-      Q: 0.4,
-    }).connect(highGain);
+    const highFilter = new Tone.Filter({ frequency: 1400, type: "bandpass", Q: 0.4 }).connect(highGain);
     const highNoise = new Tone.Noise("pink").connect(highFilter);
 
-    // Primary slots get the low layer for start/stop
     nodes.rainNoise  = lowNoise;
     nodes.rainFilter = lowFilter;
     nodes.rainGain   = lowGain;
-    // Stash mid and high layers
-    (nodes as any)._rainMidNoise  = midNoise;
-    (nodes as any)._rainMidFilter = midFilter;
-    (nodes as any)._rainMidGain   = midGain;
+    (nodes as any)._rainMidNoise   = midNoise;
+    (nodes as any)._rainMidFilter  = midFilter;
+    (nodes as any)._rainMidGain    = midGain;
     (nodes as any)._rainHighNoise  = highNoise;
     (nodes as any)._rainHighFilter = highFilter;
     (nodes as any)._rainHighGain   = highGain;
   }
 
-  // ── Tape wobble ────────────────────────────────────────────────────────────
+  // ── Tape wobble ─────────────────────────────────────────────────────────
   if (atmos.tapeWobble) {
-    const baseBpm    = Tone.getTransport().bpm.value;
-    nodes.wobbleBpm  = baseBpm;
-    let phase        = 0;
-    const depth      = baseBpm * 0.008;
-    const phaseStep  = (2 * Math.PI * 0.3) / (1000 / 300);
+    const baseBpm   = Tone.getTransport().bpm.value;
+    nodes.wobbleBpm = baseBpm;
+    let phase       = 0;
+    const depth     = baseBpm * 0.008;
+    const phaseStep = (2 * Math.PI * 0.3) / (1000 / 300);
 
     nodes.wobbleInterval = setInterval(() => {
       phase += phaseStep;
@@ -282,15 +264,12 @@ export function scheduleAtmosphere(atmos: AtmospherePattern): AtmosphereNodes {
 }
 
 export function startAtmosphere(nodes: AtmosphereNodes): void {
-  // Vinyl rumble layer
   nodes.vinylNoise?.start();
-  // Vinyl pop layers
   const popNoise = (nodes as any)._popNoise as Tone.Noise | undefined;
   const popLoop  = (nodes as any)._popLoop  as Tone.Loop  | undefined;
   popNoise?.start();
   popLoop?.start();
 
-  // Rain layers
   nodes.rainNoise?.start();
   const mid  = (nodes as any)._rainMidNoise  as Tone.Noise | undefined;
   const high = (nodes as any)._rainHighNoise as Tone.Noise | undefined;
@@ -321,7 +300,6 @@ export function stopAtmosphere(nodes: AtmosphereNodes): void {
 export function disposeAtmosphere(nodes: AtmosphereNodes): void {
   stopAtmosphere(nodes);
 
-  // Vinyl
   nodes.vinylNoise?.dispose();
   nodes.vinylFilter?.dispose();
   nodes.vinylGain?.dispose();
@@ -336,16 +314,15 @@ export function disposeAtmosphere(nodes: AtmosphereNodes): void {
   popGain?.dispose();
   popLoop?.dispose();
 
-  // Rain
   nodes.rainNoise?.dispose();
   nodes.rainFilter?.dispose();
   nodes.rainGain?.dispose();
-  const midNoise  = (nodes as any)._rainMidNoise   as Tone.Noise  | undefined;
-  const midFilter = (nodes as any)._rainMidFilter  as Tone.Filter | undefined;
-  const midGain   = (nodes as any)._rainMidGain    as Tone.Gain   | undefined;
-  const highNoise = (nodes as any)._rainHighNoise  as Tone.Noise  | undefined;
-  const highFilter= (nodes as any)._rainHighFilter as Tone.Filter | undefined;
-  const highGain  = (nodes as any)._rainHighGain   as Tone.Gain   | undefined;
+  const midNoise   = (nodes as any)._rainMidNoise   as Tone.Noise  | undefined;
+  const midFilter  = (nodes as any)._rainMidFilter  as Tone.Filter | undefined;
+  const midGain    = (nodes as any)._rainMidGain    as Tone.Gain   | undefined;
+  const highNoise  = (nodes as any)._rainHighNoise  as Tone.Noise  | undefined;
+  const highFilter = (nodes as any)._rainHighFilter as Tone.Filter | undefined;
+  const highGain   = (nodes as any)._rainHighGain   as Tone.Gain   | undefined;
   midNoise?.dispose();
   midFilter?.dispose();
   midGain?.dispose();
@@ -369,9 +346,9 @@ export function disposeParts(parts: ScheduledParts): void {
 }
 
 function beatsToTransportTime(beat: number): string {
-  const zeroBased = beat - 1;
-  const bar = Math.floor(zeroBased / 4);
-  const beatInBar = Math.floor(zeroBased % 4);
-  const sixteenth = Math.round((zeroBased % 1) * 4);
+  const zeroBased  = beat - 1;
+  const bar        = Math.floor(zeroBased / 4);
+  const beatInBar  = Math.floor(zeroBased % 4);
+  const sixteenth  = Math.round((zeroBased % 1) * 4);
   return `${bar}:${beatInBar}:${sixteenth}`;
 }

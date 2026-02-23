@@ -1,6 +1,4 @@
-import {
-  CstParser,
-} from "chevrotain";
+import { CstParser } from "chevrotain";
 import * as T from "./lexer";
 
 class SlaptParser extends CstParser {
@@ -30,6 +28,7 @@ class SlaptParser extends CstParser {
       { ALT: () => this.SUBRULE(this.genreDirective) },
       { ALT: () => this.SUBRULE(this.tempoDirective) },
       { ALT: () => this.SUBRULE(this.keyDirective) },
+      { ALT: () => this.SUBRULE(this.timesigDirective) },
     ]);
   });
 
@@ -47,6 +46,14 @@ class SlaptParser extends CstParser {
   keyDirective = this.RULE("keyDirective", () => {
     this.CONSUME(T.Key);
     this.CONSUME(T.Identifier);
+  });
+
+  // @timesig 3/4 or @timesig 5/4
+  timesigDirective = this.RULE("timesigDirective", () => {
+    this.CONSUME(T.Timesig);
+    this.CONSUME(T.NumberLiteral);  // numerator
+    this.CONSUME(T.Slash);
+    this.CONSUME2(T.NumberLiteral); // denominator
   });
 
   drumBlock = this.RULE("drumBlock", () => {
@@ -126,24 +133,42 @@ class SlaptParser extends CstParser {
 
   hihatPattern = this.RULE("hihatPattern", () => {
     this.CONSUME(T.Hihat);
-    this.OPTION(() => {
-      this.OR([
-        { ALT: () => this.CONSUME(T.Closed) },
-        { ALT: () => this.CONSUME(T.Open) },
-      ]);
-    });
-    this.OR2([
+    this.OR([
+      // hihat open on 4 and ...  (new beat-specific open hihat)
       {
         ALT: () => {
-          this.CONSUME(T.NumberLiteral);
-          this.CONSUME(T.Times);
-          this.OPTION2(() => {
-            this.CONSUME(T.With);
-            this.CONSUME(T.Identifier);
+          this.CONSUME(T.Open);
+          this.CONSUME(T.On);
+          this.AT_LEAST_ONE_SEP({
+            SEP: T.And,
+            DEF: () => this.CONSUME(T.NumberLiteral),
           });
         },
       },
-      { ALT: () => this.CONSUME(T.Occasionally) },
+      // hihat closed N times / hihat N times / hihat occasionally
+      {
+        ALT: () => {
+          this.OPTION(() => {
+            this.OR2([
+              { ALT: () => this.CONSUME(T.Closed) },
+              { ALT: () => this.CONSUME2(T.Open) },
+            ]);
+          });
+          this.OR3([
+            {
+              ALT: () => {
+                this.CONSUME2(T.NumberLiteral);
+                this.CONSUME(T.Times);
+                this.OPTION2(() => {
+                  this.CONSUME(T.With);
+                  this.CONSUME(T.Identifier);
+                });
+              },
+            },
+            { ALT: () => this.CONSUME(T.Occasionally) },
+          ]);
+        },
+      },
     ]);
   });
 
@@ -162,18 +187,11 @@ class SlaptParser extends CstParser {
     this.SUBRULE(this.velocityRange);
   });
 
-  // FIX 1: drumEffect apply branch now also accepts keyword tokens
-  // (like Compress, Filter, Reverb, etc.) in addition to plain Identifiers.
-  // FIX 2: compress branch now accepts an optional Identifier OR keyword
-  // modifier so "apply compress(heavy)" and "compress heavily" both parse.
   drumEffect = this.RULE("drumEffect", () => {
     this.OR([
       {
         ALT: () => {
           this.CONSUME(T.Apply);
-          // Accept any known keyword that could follow "apply" (e.g. compress,
-          // bitcrush written as an identifier, reverb, etc.) as well as plain
-          // Identifiers.  We try keyword tokens first then fall back.
           this.OR2([
             { ALT: () => this.CONSUME(T.Compress) },
             { ALT: () => this.CONSUME(T.Reverb) },
@@ -181,7 +199,6 @@ class SlaptParser extends CstParser {
           ]);
           this.OPTION(() => {
             this.CONSUME(T.LParen);
-            // params: optional number and/or identifier-like token
             this.OPTION2(() => this.CONSUME(T.NumberLiteral));
             this.OPTION3(() => {
               this.OR3([
@@ -356,8 +373,6 @@ class SlaptParser extends CstParser {
     this.MANY(() => this.SUBRULE(this.atmosphereStatement));
   });
 
-  // FIX 3: tape wobble line now accepts Subtle keyword token in addition to
-  // a plain Identifier, so "tape wobble subtle" parses correctly.
   atmosphereStatement = this.RULE("atmosphereStatement", () => {
     this.OR([
       {
@@ -383,7 +398,6 @@ class SlaptParser extends CstParser {
         ALT: () => {
           this.CONSUME(T.Tape);
           this.CONSUME(T.Wobble);
-          // Accept either a plain identifier OR the keyword "subtle"
           this.OR2([
             { ALT: () => this.CONSUME2(T.Identifier) },
             { ALT: () => this.CONSUME(T.Subtle) },
