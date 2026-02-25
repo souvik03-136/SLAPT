@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="images/slapt.png" alt="SLAPT Logo" width="600"/>
+  <img src="media/slapt.png" alt="SLAPT Logo" width="600"/>
 </p>
 
 <h1 align="center">SLAPT</h1>
@@ -332,7 +332,7 @@ Inspired by TidalCycles, Strudel, Sonic Pi, and every producer who shares knowle
 ---
 
 <p align="center">
-  <img src="images/slapt.png" alt="SLAPT" width="400"/>
+  <img src="media/slapt.png" alt="SLAPT" width="400"/>
 </p>
 
 <p align="center"><em>"Finally, a music programming language that doesn't make me want to uninstall everything."</em></p>
