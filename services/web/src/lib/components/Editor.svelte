@@ -10,6 +10,7 @@
   let editorContainer: HTMLDivElement;
   let view: EditorView;
   let parseTimer: ReturnType<typeof setTimeout>;
+  let internalUpdate = false; // flag to prevent feedback loop
 
   // Copy state
   let copied = false;
@@ -61,6 +62,7 @@
         }),
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
+            if (internalUpdate) return; // store triggered this — don't re-write store
             const code = update.state.doc.toString();
             slaptStore.setCode(code);
             clearTimeout(parseTimer);
@@ -73,6 +75,31 @@
     view = new EditorView({ state, parent: editorContainer });
     triggerParse($slaptStore.code);
   });
+
+  // React to store code changes that originate externally (e.g. resetCode()).
+  // We compare the store value to the editor's current content to avoid
+  // replacing text the user is actively typing.
+  let previousStoreCode = $slaptStore.code;
+  $: if (view && $slaptStore.code !== previousStoreCode) {
+    const currentEditorContent = view.state.doc.toString();
+    if ($slaptStore.code !== currentEditorContent) {
+      // Store changed to something different from what's in the editor —
+      // this means it was an external change (reset). Sync CodeMirror.
+      internalUpdate = true;
+      view.dispatch({
+        changes: {
+          from: 0,
+          to: view.state.doc.length,
+          insert: $slaptStore.code,
+        },
+      });
+      internalUpdate = false;
+      // Re-parse the new code
+      clearTimeout(parseTimer);
+      triggerParse($slaptStore.code);
+    }
+    previousStoreCode = $slaptStore.code;
+  }
 
   onDestroy(() => {
     view?.destroy();
@@ -99,7 +126,6 @@
       clearTimeout(copyTimer);
       copyTimer = setTimeout(() => { copied = false; }, 1800);
     } catch {
-      // fallback: select all in editor
       view?.focus();
     }
   }
@@ -128,12 +154,10 @@
         aria-label="Copy code to clipboard"
       >
         {#if copied}
-          <!-- Checkmark icon -->
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
         {:else}
-          <!-- Copy icon -->
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
@@ -201,7 +225,6 @@
     box-shadow: 0 0 8px rgba(200, 240, 96, 0.4);
   }
 
-  /* Copy button */
   .copy-btn {
     display: flex;
     align-items: center;

@@ -114,6 +114,7 @@
   <span class="op">snare on</span> <span class="num">2</span> <span class="op">and</span> <span class="num">4</span></code></pre>
         <p>Paste that in the editor and hit play. Everything else is layers on top.</p>
         <div class="callout tip">💡 Code is parsed automatically 400ms after you stop typing. The status dot goes green when valid. Your code is <strong>auto-saved</strong> — refreshing the page won't lose your work.</div>
+        <div class="callout tip">🎵 On first play, SLAPT loads real instrument samples (Rhodes piano, electric bass, drum hits) from a CDN into browser memory. This takes 1–3 seconds. After that, playback is instant. The play button shows “Loading…” while samples fetch.</div>
       </section>
 
       <!-- ── FILE STRUCTURE ── -->
@@ -239,7 +240,7 @@
   <span class="op">vinyl crackle at</span> <span class="num">20</span>% <span class="op">volume</span>
   <span class="op">rain sounds softly in background</span>
   <span class="op">tape wobble subtle</span></code></pre>
-        <p>All three are synthesized in the browser — no samples. All optional, all combinable.</p>
+        <p>All three are synthesized in the browser from noise generators — no audio files involved. All optional, all combinable.</p>
         <table>
           <thead><tr><th>Layer</th><th>How it works</th></tr></thead>
           <tbody>
@@ -398,10 +399,10 @@
 
       <!-- ── AUTO-SAVE ── -->
       <section id="doc-persist" class="doc-sec">
-        <div class="sec-head"><span class="sec-num">14</span><h2>Auto-Save</h2></div>
-        <p>Your code is saved to <code>localStorage</code> every time you type. Refreshing or closing the tab preserves your work automatically — no manual save needed.</p>
+        <div class="sec-head"><span class="sec-num">14</span><h2>Auto-Save &amp; Reset</h2></div>
+        <p>Your code is saved to <code>localStorage</code> every time you type. Refreshing, closing the tab, or restarting Docker — your track is still there when you come back. No manual save needed.</p>
         <p>The key used is <code>slapt_code_v1</code>. Data stays on your device and is never sent anywhere beyond the local parser service.</p>
-        <div class="callout tip">💡 If you want to start fresh, open the browser console and run <code>localStorage.removeItem("slapt_code_v1")</code>, then refresh.</div>
+        <div class="callout tip">💡 To restore the default example track, click the <strong>Reset</strong> button in the top bar. It stops playback, wipes your saved code, and loads the built-in lo-fi example — both in the editor and in localStorage.</div>
       </section>
 
       <!-- ── ERRORS ── -->
@@ -484,6 +485,7 @@
           <div class="cs-row"><code>Copy icon (top-right)</code><span>Copy entire code to clipboard</span></div>
           <div class="cs-row"><code>MIDI button (top bar)</code><span>Download .mid — works in any DAW</span></div>
           <div class="cs-row"><code>Auto-save</code><span>Code persists through page refresh</span></div>
+          <div class="cs-row"><code>Reset button</code><span>Restore default example track (top bar)</span></div>
         </div>
       </section>
 

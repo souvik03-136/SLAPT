@@ -1,3 +1,15 @@
+// Public audio API consumed by Controls.svelte.
+//
+// Flow when user clicks Play:
+//   1. Tone.start()           — resumes AudioContext (required after user gesture)
+//   2. buildEffectRack()      — creates filters, compressors, reverb (~instant)
+//   3. buildSynthRack(fx)     — creates Tone.Sampler instances, fetches .mp3
+//                               samples from CDN, decodes into AudioBuffers.
+//                               Resolves when ALL samples are ready.
+//                               First call: ~1-3s. Subsequent calls: instant (cache).
+//   4. samplesReady = true    — UI can now enable play button / hide spinner
+//   5. schedule + start       — normal playback
+
 import * as Tone from "tone";
 import {
   buildEffectRack,
@@ -19,144 +31,176 @@ import {
   disposeParts,
 } from "./scheduler";
 import type { SynthRack, EffectRack } from "./effects";
-import type { DrumPattern, AtmospherePattern, ScheduledParts } from "./scheduler";
+import type { DrumPattern, AtmospherePattern, AtmosphereNodes } from "./scheduler";
 
 export type { DrumPattern, AtmospherePattern };
 
-let synths: SynthRack | null = null;
-let fx: EffectRack | null = null;
-let parts: ScheduledParts = { drum: null, chord: null, bass: null, atmosphere: null };
-let barRepeatId: number | null = null;
-let barCount = 0;
-let onBarChange: ((bar: number) => void) | null = null;
-let initialized = false;
+// ─── State ────────────────────────────────────────────────────────────────────
 
-function isBrowser(): boolean {
-  return typeof window !== "undefined";
-}
+let synthRack:   SynthRack      | null = null;
+let effectRack:  EffectRack     | null = null;
+let drumPart:    Tone.Part      | null = null;
+let chordPart:   Tone.Part      | null = null;
+let bassPart:    Tone.Part      | null = null;
+let atmosNodes:  AtmosphereNodes| null = null;
+let barCallback: ((bar: number) => void) | null = null;
+let barInterval: ReturnType<typeof setInterval> | null = null;
+let initialized  = false;
+
+// Exposed to UI — Controls.svelte can show a loading indicator while false
+export let samplesReady   = false;
+export let samplesLoading = false;
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
 
 export async function initAudio(): Promise<void> {
-  if (!isBrowser()) return;
+  if (typeof window === "undefined") return;
   if (initialized) return;
+
   await Tone.start();
-  fx = await buildEffectRack();
-  synths = buildSynthRack(fx);
-  initialized = true;
-}
 
-export function setBarChangeCallback(cb: (bar: number) => void): void {
-  onBarChange = cb;
-}
-
-export async function playDrums(pattern: DrumPattern, tempo: number): Promise<void> {
-  if (!isBrowser()) return;
-  await initAudio();
-  Tone.getTransport().bpm.value = tempo;
-
-  parts.drum?.dispose();
-  parts.drum = null;
-
+  if (effectRack) disposeEffectRack(effectRack);
+  if (synthRack)  disposeSynthRack(synthRack);
   resetEffectState();
-  applyDrumEffects(synths!, fx!, pattern.effects);
-  parts.drum = scheduleDrums(pattern, synths!);
+
+  samplesReady   = false;
+  samplesLoading = true;
+
+  effectRack = await buildEffectRack();
+
+  // Async: fetches .mp3 samples from CDN and decodes them into AudioBuffers.
+  // Tone.loaded() inside buildSynthRack resolves when all samples are decoded.
+  synthRack = await buildSynthRack(effectRack);
+
+  samplesReady   = true;
+  samplesLoading = false;
+  initialized    = true;
 }
 
-export async function playChords(
-  progression: string[],
-  _instrument: string,
-  tempo: number
-): Promise<void> {
-  if (!isBrowser()) return;
-  await initAudio();
-  Tone.getTransport().bpm.value = tempo;
+// ─── Schedule ─────────────────────────────────────────────────────────────────
 
-  parts.chord?.dispose();
-  parts.chord = null;
-  parts.chord = scheduleChords(progression, synths!);
+export function playDrums(pattern: DrumPattern): void {
+  if (!synthRack || !effectRack) return;
+  resetEffectState();
+  applyDrumEffects(synthRack, effectRack, pattern.effects);
+  drumPart?.dispose();
+  drumPart = scheduleDrums(pattern, synthRack, effectRack);
 }
 
-export async function playBass(progression: string[], _tempo: number): Promise<void> {
-  if (!isBrowser()) return;
-  await initAudio();
-
-  parts.bass?.dispose();
-  parts.bass = null;
-  parts.bass = scheduleBass(progression, synths!);
+export function clearDrums(): void {
+  drumPart?.dispose();
+  drumPart = null;
 }
 
-export async function playAtmosphere(atmos: AtmospherePattern): Promise<void> {
-  if (!isBrowser()) return;
-  await initAudio();
+export function playChords(progression: string[]): void {
+  if (!synthRack) return;
+  chordPart?.dispose();
+  chordPart = scheduleChords(progression, synthRack);
+}
 
-  // Stop and dispose previous atmosphere nodes before building new ones
-  if (parts.atmosphere) {
-    stopAtmosphere(parts.atmosphere);
-    disposeAtmosphere(parts.atmosphere);
-    parts.atmosphere = null;
+export function clearChords(): void {
+  chordPart?.dispose();
+  chordPart = null;
+}
+
+export function playBass(progression: string[]): void {
+  if (!synthRack) return;
+  bassPart?.dispose();
+  bassPart = scheduleBass(progression, synthRack);
+}
+
+export function clearBass(): void {
+  bassPart?.dispose();
+  bassPart = null;
+}
+
+export function clearAtmosphere(): void {
+  if (atmosNodes) {
+    stopAtmosphere(atmosNodes);
+    disposeAtmosphere(atmosNodes);
+    atmosNodes = null;
   }
+}
 
+export function playAtmosphere(atmos: AtmospherePattern): void {
+  if (atmosNodes) {
+    stopAtmosphere(atmosNodes);
+    disposeAtmosphere(atmosNodes);
+  }
   const hasContent = atmos.vinylCrackle > 0 || atmos.rain || atmos.tapeWobble;
-  if (hasContent) {
-    // FIX: only build the nodes here — do NOT start them yet.
-    // startAtmosphere is called from startPlayback so noise only
-    // runs while the transport is running.
-    parts.atmosphere = scheduleAtmosphere(atmos);
-  }
+  atmosNodes = hasContent ? scheduleAtmosphere(atmos) : null;
 }
+
+// ─── Transport ────────────────────────────────────────────────────────────────
 
 export function startPlayback(): void {
-  if (!isBrowser()) return;
-  barCount = 0;
+  if (typeof window === "undefined") return;
 
-  if (barRepeatId !== null) {
-    Tone.getTransport().clear(barRepeatId);
-    barRepeatId = null;
-  }
-
-  barRepeatId = Tone.getTransport().scheduleRepeat(() => {
-    barCount++;
-    onBarChange?.(barCount);
-  }, "1m");
-
+  const parts = { drum: drumPart, chord: chordPart, bass: bassPart, atmosphere: atmosNodes };
   startParts(parts);
+
   Tone.getTransport().start();
+
+  if (barCallback) {
+    barInterval = setInterval(() => {
+      const pos = Tone.getTransport().position as string;
+      const bar = parseInt(pos.split(":")[0]) + 1;
+      barCallback!(bar);
+    }, 500);
+  }
 }
 
 export function stopPlayback(): void {
-  if (!isBrowser()) return;
+  if (typeof window === "undefined") return;
+
   Tone.getTransport().stop();
   Tone.getTransport().cancel();
-  // FIX: explicitly stop atmosphere nodes — they are free-running Tone.Noise
-  // instances not tied to the Transport, so Transport.stop() does nothing to them
-  if (parts.atmosphere) {
-    stopAtmosphere(parts.atmosphere);
-  }
-  barCount = 0;
-  barRepeatId = null;
+
+  drumPart?.stop();
+  chordPart?.stop();
+  bassPart?.stop();
+
+  if (atmosNodes) stopAtmosphere(atmosNodes);
+  if (barInterval) { clearInterval(barInterval); barInterval = null; }
+  barCallback?.(0);
 }
 
 export function pausePlayback(): void {
-  if (!isBrowser()) return;
+  if (typeof window === "undefined") return;
   Tone.getTransport().pause();
-  // FIX: pause atmosphere too — noise doesn't pause with the transport
-  if (parts.atmosphere) {
-    stopAtmosphere(parts.atmosphere);
-  }
+  if (atmosNodes) stopAtmosphere(atmosNodes);
+  if (barInterval) { clearInterval(barInterval); barInterval = null; }
 }
 
 export function setTempo(bpm: number): void {
-  if (!isBrowser()) return;
+  if (typeof window === "undefined") return;
   Tone.getTransport().bpm.value = bpm;
 }
 
+export function setBarChangeCallback(cb: (bar: number) => void): void {
+  barCallback = cb;
+}
+
+// ─── Cleanup ──────────────────────────────────────────────────────────────────
+
 export function cleanup(): void {
-  if (!isBrowser()) return;
+  if (typeof window === "undefined") return;
   stopPlayback();
+
+  const parts = { drum: drumPart, chord: chordPart, bass: bassPart, atmosphere: atmosNodes };
   disposeParts(parts);
-  if (synths) disposeSynthRack(synths);
-  if (fx) disposeEffectRack(fx);
-  parts = { drum: null, chord: null, bass: null, atmosphere: null };
-  synths = null;
-  fx = null;
-  initialized = false;
+
+  if (synthRack)  disposeSynthRack(synthRack);
+  if (effectRack) disposeEffectRack(effectRack);
+
+  drumPart   = null;
+  chordPart  = null;
+  bassPart   = null;
+  atmosNodes = null;
+  synthRack  = null;
+  effectRack = null;
+
+  samplesReady   = false;
+  samplesLoading = false;
+  initialized    = false;
 }
