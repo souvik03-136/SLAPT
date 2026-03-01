@@ -48,7 +48,7 @@ Go to [Releases](https://github.com/souvik03-136/slapt/releases) and download `s
 Unzip anywhere. You'll get a folder with these files:
 
 ```
-slapt-v0.1.0/
+slapt-v1.1.0/
   start.bat              <- Windows
   start.sh               <- Mac / Linux
   stop.bat               <- Windows
@@ -102,6 +102,8 @@ drums:
   snare on 2 and 4
 
 // Level 30: Two weeks later
+@timesig 3/4
+
 drums with swing(60%):
   kick pattern [1, 2.75, 3]
   snare on 2 and 4
@@ -123,6 +125,7 @@ kick on 5
 
 → Error: BEAT_OUT_OF_RANGE
    "Beat 5 doesn't exist in 4/4 time"
+   context: "kick on"
 
    Suggestions:
    - Beats go from 1 to 4 in your current time signature
@@ -152,6 +155,7 @@ atmosphere:
 drums with swing(60%):
   kick pattern [1, 2.75, 3]
   snare on 2 and 4
+  snare velocity random(0.7 to 0.9)
   hihat closed 8 times
   hihat open on 4
 
@@ -165,6 +169,42 @@ bass walking the roots:
 
 make it dusty
 ```
+
+---
+
+## What's New in v1.1.0
+
+### Open Hihat on Specific Beats
+Place an open hihat exactly where you want it. The closed grid skips that position automatically — no double-hits.
+
+```
+hihat closed 8 times
+hihat open on 4
+hihat open on 2 and 4   // multiple beats
+```
+
+### Time Signatures — 3/4 and 5/4
+Write in waltz or odd time. Beat validation adjusts automatically.
+
+```
+@timesig 3/4   // beats 1–3 valid, waltz feel
+@timesig 5/4   // beats 1–5 valid, Radiohead territory
+```
+
+### MIDI Export
+Click the **MIDI** button. Download a `.mid` file that works in any DAW — Ableton, Logic, FL Studio, GarageBand. Drums on GM channel 10, chords on channel 1, bass on channel 2.
+
+### More Keys
+Four new keys: `F#m` (ethereal), `Bb` (jazzy), `Ab` (lush), `Ebm` (heavy). Now 11 total.
+
+### Auto-Save
+Your code saves to `localStorage` on every keystroke. Refresh, close the tab, restart Docker — your track comes back automatically.
+
+### In-App Documentation
+Hit the **Docs** button in the top bar. Full language reference and examples without leaving the editor.
+
+### Reset Button
+One click restores the default example track if you want a clean start.
 
 ---
 
@@ -230,20 +270,21 @@ Web runs on `http://localhost:3000`, parser on `http://localhost:3001`.
 
 ## What's Next?
 
-### Phase 1 (Now): Foundation
+### Phase 1 (Done): Foundation
 - [x] Core drum programming (kick, snare, hihat, swing, velocity)
-- [x] Open hihat on specific beats (`hihat open on 4`)
+- [x] Open hihat on specific beats (`hihat open on 4`, `hihat open on 2 and 4`)
+- [x] Time signatures — `@timesig 3/4`, `4/4`, `5/4` with automatic beat range validation
 - [x] Chord block with rhodes piano voicings
 - [x] Bass block following chord roots
 - [x] Atmosphere synthesis (vinyl crackle, rain, tape wobble)
 - [x] Global modifiers (groovy, dusty, lazy, energetic)
 - [x] Sections (intro, verse, chorus, outro)
 - [x] Genre-aware validation (lofi-hiphop, boom-bap, house, techno, dnb, ambient, trap)
-- [x] Key-aware note validation (Am, Cm, Dm, Em, F#m, Ebm, C, G, F, Bb, Ab)
-- [x] `@timesig` directive — 3/4, 4/4, 5/4 with automatic beat range validation
+- [x] Key-aware note validation — 11 keys (Am, Cm, Dm, Em, F#m, Ebm, C, G, F, Bb, Ab)
 - [x] MIDI export — download `.mid` for any DAW
 - [x] Copy code button in editor
 - [x] Auto-save to localStorage — code persists through refresh
+- [x] Reset button — restores default example track
 - [x] Helpful error messages with context and suggestions
 - [x] In-app documentation panel
 - [x] GitHub releases with one-click install
@@ -259,6 +300,37 @@ Web runs on `http://localhost:3000`, parser on `http://localhost:3001`.
 - [ ] Live performance mode
 - [ ] Collaboration features
 - [ ] Generative/randomized patterns
+
+---
+
+## Tagging a New Release
+
+If you're a maintainer cutting a new release:
+
+```bash
+# 1. Make sure main is clean and all CI is green
+git checkout main
+git pull
+
+# 2. Tag the release (semver — bump major.minor.patch as appropriate)
+git tag v1.1.0
+
+# 3. Push the tag — this triggers the release workflow automatically
+git push origin v1.1.0
+```
+
+The `release.yml` workflow kicks in: it builds and pushes versioned Docker images to GHCR, packages `slapt-v1.1.0.zip` (start/stop scripts + `docker-compose.release.yml`), generates a grouped changelog from commit history, and creates the GitHub Release with the zip attached.
+
+**No manual steps after the tag push.** The workflow does everything.
+
+To overwrite an existing tag locally and remotely if you need to redo a release:
+
+```bash
+git tag -d v1.1.0
+git push origin :refs/tags/v1.1.0
+git tag v1.1.0
+git push origin v1.1.0
+```
 
 ---
 
