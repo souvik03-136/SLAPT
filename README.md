@@ -20,6 +20,12 @@
   <img src="https://img.shields.io/badge/requires-Docker-2496ED?style=flat-square&logo=docker" alt="Docker"/>
 </p>
 
+<p align="center">
+  <video src="media/SLAPT.mp4" width="720" controls autoplay muted loop>
+    Your browser does not support the video tag.
+  </video>
+</p>
+
 ---
 
 > **Is your code slapping? Because mine is.**
