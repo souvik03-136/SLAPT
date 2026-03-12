@@ -1,5 +1,4 @@
 <h1 align="center">
-
 ```
   ███████╗██╗      █████╗ ██████╗ ████████╗
   ██╔════╝██║     ██╔══██╗██╔══██╗╚══██╔══╝
@@ -11,13 +10,23 @@
 
 </h1>
 
-<p align="center"><em><strong>S</strong>ounds <strong>L</strong>ike <strong>A</strong> <strong>P</strong>erfect <strong>T</strong>rack</em><br/>
-<sub><em>(or Sonic Language Audio Programming Tool if ur parents are asking)</em></sub></p>
+<p align="center">
+  <em><strong>S</strong>ounds <strong>L</strong>ike <strong>A</strong> <strong>P</strong>erfect <strong>T</strong>rack</em><br/>
+  <sub><em>(or Sonic Language Audio Programming Tool if ur parents are asking)</em></sub>
+</p>
 
 <p align="center">
-  <a href="https://github.com/souvik03-136/slapt/releases"><img src="https://img.shields.io/github/v/release/souvik03-136/slapt?style=flat-square&color=blueviolet" alt="Latest Release"/></a>
+  <a href="https://github.com/souvik03-136/slapt/releases">
+    <img src="https://img.shields.io/github/v/release/souvik03-136/slapt?style=flat-square&color=blueviolet" alt="Latest Release"/>
+  </a>
   <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License"/>
   <img src="https://img.shields.io/badge/requires-Docker-2496ED?style=flat-square&logo=docker" alt="Docker"/>
+</p>
+
+<p align="center">
+  <a href="https://drive.google.com/file/d/1DZhTyQcYHVhVNTV5G9r2kABlz7BBkC5R/view">
+    <img src="https://img.shields.io/badge/▶%20Watch%20Demo-Click%20to%20Play-blueviolet?style=for-the-badge&logo=google-drive&logoColor=white" alt="Watch Demo"/>
+  </a>
 </p>
 
 ---
